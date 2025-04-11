@@ -1,11 +1,11 @@
 Global:
   debug: false
   use_gpu: true
-  epoch_num: 800
+  epoch_num: 50
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec_ppocr_v3_distillation
-  save_epoch_step: 3
+  save_model_dir: ./output/rec/08042025/PPOCRv3/
+  save_epoch_step: 5
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   pretrained_model:
@@ -13,13 +13,13 @@ Global:
   save_inference_dir:
   use_visualdl: false
   infer_img: doc/imgs_words/ch/word_1.jpg
-  character_dict_path: ppocr/utils/ppocr_keys_v1.txt
-  max_text_length: &max_text_length 25
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  max_text_length: &max_text_length 7
   infer_mode: false
   use_space_char: true
   distributed: true
   save_res_path: ./output/rec/predicts_ppocrv3_distillation.txt
-  d2s_train_image_shape: [3, 48, -1]
+  d2s_train_image_shape: [3, 48, 48]
 
 
 Optimizer:
@@ -28,9 +28,9 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Piecewise
-    decay_epochs : [700]
-    values : [0.0005, 0.00005]
-    warmup_epoch: 5
+    decay_epochs : [30, 40]
+    values : [0.0015, 0.00015, 0.000015]
+    warmup_epoch: 8
   regularizer:
     name: L2
     factor: 3.0e-05
@@ -156,7 +156,8 @@ Train:
     data_dir: ./train_data/
     ext_op_transform_idx: 1
     label_file_list:
-    - ./train_data/train_list.txt
+    - ./train_data/casia_hwdb_train.txt
+    # - ./train_data/Train_19_3_2025.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -164,12 +165,12 @@ Train:
     - RecConAug:
         prob: 0.5
         ext_data_num: 2
-        image_shape: [48, 320, 3]
+        image_shape: [48, 48, 3]
         max_text_length: *max_text_length
     - RecAug:
     - MultiLabelEncode:
     - RecResizeImg:
-        image_shape: [3, 48, 320]
+        image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
@@ -179,22 +180,23 @@ Train:
         - valid_ratio
   loader:
     shuffle: true
-    batch_size_per_card: 128
+    batch_size_per_card: 384
     drop_last: true
-    num_workers: 4
+    num_workers: 8
 Eval:
   dataset:
     name: SimpleDataSet
     data_dir: ./train_data
     label_file_list:
-    - ./train_data/val_list.txt
+    - ./train_data/casia_hwdb_test.txt
+    # - ./train_data/Test_19_3_2025.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
         channel_first: false
     - MultiLabelEncode:
     - RecResizeImg:
-        image_shape: [3, 48, 320]
+        image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
@@ -205,5 +207,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
-    num_workers: 4
+    batch_size_per_card: 384
+    num_workers: 8

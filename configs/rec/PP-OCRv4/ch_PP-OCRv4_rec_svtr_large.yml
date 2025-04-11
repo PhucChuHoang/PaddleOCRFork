@@ -1,12 +1,11 @@
 Global:
   debug: false
   use_gpu: true
-  epoch_num: 200
+  epoch_num: 50
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec/svtr_large/
-  save_epoch_step: 10
-  # evaluation is run every 2000 iterations after the 0th iteration
+  save_model_dir: ./output/rec/08042025/svtr_large/
+  save_epoch_step: 2
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   pretrained_model:
@@ -14,13 +13,12 @@ Global:
   save_inference_dir:
   use_visualdl: false
   infer_img: doc/imgs_words/ch/word_1.jpg
-  character_dict_path: ppocr/utils/ppocr_keys_v1.txt
-  max_text_length: &max_text_length 40
+  character_dict_path: ppocr\utils\dict\casia_hwdb_dict.txt
+  max_text_length: &max_text_length 7
   infer_mode: false
   use_space_char: true
   distributed: true
   save_res_path: ./output/rec/predicts_svtr_large.txt
-
 
 Optimizer:
   name: AdamW
@@ -32,9 +30,8 @@ Optimizer:
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.00025 # 8gpus 64bs
-    warmup_epoch: 5
-
+    learning_rate: 0.0005
+    warmup_epoch: 8
 
 Architecture:
   model_type: rec
@@ -44,8 +41,8 @@ Architecture:
     name: SVTRNet
     img_size:
     - 48
-    - 320
-    out_char_num: 40
+    - 48
+    out_char_num: 7
     out_channels: 512
     patch_merging: Conv
     embed_dim: [192, 256, 512]
@@ -94,7 +91,7 @@ Train:
     data_dir: ./train_data/
     ext_op_transform_idx: 1
     label_file_list:
-    - ./train_data/train_list.txt
+    - ./train_data/Train_19_3_2025.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -103,7 +100,7 @@ Train:
     - MultiLabelEncode:
         gtc_encode: NRTRLabelEncode
     - RecResizeImg:
-        image_shape: [3, 48, 320]
+        image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
@@ -115,13 +112,13 @@ Train:
     shuffle: true
     batch_size_per_card: 64
     drop_last: true
-    num_workers: 8
+    num_workers: 4
 Eval:
   dataset:
     name: SimpleDataSet
     data_dir: ./train_data
     label_file_list:
-    - ./train_data/val_list.txt
+    - ./train_data/Test_19_3_2025.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -129,7 +126,7 @@ Eval:
     - MultiLabelEncode:
         gtc_encode: NRTRLabelEncode
     - SVTRRecResizeImg:
-        image_shape: [3, 48, 320]
+        image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
@@ -140,5 +137,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128
+    batch_size_per_card: 64
     num_workers: 4
