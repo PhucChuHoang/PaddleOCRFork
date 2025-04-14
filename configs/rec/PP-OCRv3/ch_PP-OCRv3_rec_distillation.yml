@@ -1,7 +1,7 @@
 Global:
   debug: false
-  use_gpu: true
-  epoch_num: 50
+  use_gpu: false
+  epoch_num: 1
   log_smooth_window: 20
   print_batch_step: 10
   save_model_dir: ./output/rec/08042025/PPOCRv3/
@@ -153,10 +153,10 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/
+    data_dir: /kaggle/temp/
     ext_op_transform_idx: 1
     label_file_list:
-    - ./train_data/casia_hwdb_train.txt
+    - ./train_labels/casia_hwdb_train.txt
     # - ./train_data/Train_19_3_2025.txt
     transforms:
     - DecodeImage:
@@ -186,9 +186,9 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data
+    data_dir: /kaggle/temp/
     label_file_list:
-    - ./train_data/casia_hwdb_test.txt
+    - ./train_labels/casia_hwdb_test.txt
     # - ./train_data/Test_19_3_2025.txt
     transforms:
     - DecodeImage:
