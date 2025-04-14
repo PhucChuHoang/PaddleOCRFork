@@ -1,15 +1,15 @@
 Global:
   debug: false
   use_gpu: true
-  epoch_num: 1
+  epoch_num: 30
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/rec/08042025/PPOCRv3/
+  save_model_dir: /kaggle/working/rec
   save_epoch_step: 5
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   pretrained_model:
-  checkpoints: /kaggle/working/model.pdparams
+  checkpoints: /kaggle/working/weights
   save_inference_dir:
   use_visualdl: false
   infer_img: doc/imgs_words/ch/word_1.jpg
@@ -29,7 +29,7 @@ Optimizer:
   lr:
     name: Piecewise
     decay_epochs : [30, 40]
-    values : [0.0015, 0.00015, 0.000015]
+    values : [0.002, 0.0002, 0.00002]
     warmup_epoch: 8
   regularizer:
     name: L2
@@ -180,7 +180,7 @@ Train:
         - valid_ratio
   loader:
     shuffle: true
-    batch_size_per_card: 384
+    batch_size_per_card: 512
     drop_last: true
     num_workers: 1
 Eval:
@@ -207,5 +207,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 384
+    batch_size_per_card: 512
     num_workers: 1
