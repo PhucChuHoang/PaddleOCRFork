@@ -1,15 +1,15 @@
 Global:
   debug: false
   use_gpu: true
-  epoch_num: 20
+  epoch_num: 30
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: /kaggle/working/rec
+  save_model_dir: /kaggle/output/rec
   save_epoch_step: 2
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   pretrained_model:
-  checkpoints: /kaggle/working/weights
+  checkpoints: /kaggle/working/weights/model
   save_inference_dir:
   use_visualdl: false
   infer_img: doc/imgs_words/ch/word_1.jpg
