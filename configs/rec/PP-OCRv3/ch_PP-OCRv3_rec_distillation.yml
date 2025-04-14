@@ -1,6 +1,6 @@
 Global:
   debug: false
-  use_gpu: false
+  use_gpu: true
   epoch_num: 1
   log_smooth_window: 20
   print_batch_step: 10
@@ -9,7 +9,7 @@ Global:
   eval_batch_step: [0, 2000]
   cal_metric_during_train: true
   pretrained_model:
-  checkpoints:
+  checkpoints: /kaggle/working/model.pdparams
   save_inference_dir:
   use_visualdl: false
   infer_img: doc/imgs_words/ch/word_1.jpg
@@ -153,7 +153,7 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/
+    data_dir: /kaggle/temp/extracted_data
     ext_op_transform_idx: 1
     label_file_list:
     - ./train_labels/casia_hwdb_train.txt
@@ -182,11 +182,11 @@ Train:
     shuffle: true
     batch_size_per_card: 384
     drop_last: true
-    num_workers: 8
+    num_workers: 1
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/
+    data_dir: /kaggle/temp/extracted_data
     label_file_list:
     - ./train_labels/casia_hwdb_test.txt
     # - ./train_data/Test_19_3_2025.txt
@@ -208,4 +208,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 384
-    num_workers: 8
+    num_workers: 1
