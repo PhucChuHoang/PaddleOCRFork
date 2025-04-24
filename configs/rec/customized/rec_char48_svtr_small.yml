@@ -34,6 +34,7 @@ Architecture:
     model_name:   small
     in_chans:     3
     out_channels: 192
+    img_size:     [48, 48]
     patch_size:   [4, 2]
   Head:
     name:         CTCHead
