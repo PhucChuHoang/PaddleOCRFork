@@ -28,7 +28,7 @@ Optimizer:
 
 Architecture:
   model_type: "rec"
-  algorithm:  SVTRNet
+  algorithm: SVTR
   Backbone:
     name:         SVTRNet
     model_name:   small
