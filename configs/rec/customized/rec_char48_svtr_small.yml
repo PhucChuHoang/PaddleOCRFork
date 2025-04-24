@@ -38,13 +38,11 @@ Architecture:
     patch_size:   [4, 2]
     out_char_num: 6
   Head:
-    name: CTCHead
-    fc_decay:     1.0e-5
+    name: CTCHeadTLast
     in_channels: 192
+    fc_decay:   1.0e-5
     out_channels: *char_num
-    transforms:
-      - permute:
-          axes: [0, 2, 1]
+
 Loss:
   name: CTCLoss
 

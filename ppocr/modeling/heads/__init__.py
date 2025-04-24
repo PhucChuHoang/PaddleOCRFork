@@ -27,6 +27,7 @@ def build_head(config):
 
     # rec head
     from .rec_ctc_head import CTCHead
+    from .rec_ctc_head_tlast import CTCHeadTLast
     from .rec_att_head import AttentionHead
     from .rec_srn_head import SRNHead
     from .rec_nrtr_head import Transformer
@@ -63,6 +64,7 @@ def build_head(config):
         "EASTHead",
         "SASTHead",
         "CTCHead",
+        "CTCHeadTLast",
         "ClsHead",
         "AttentionHead",
         "SRNHead",
