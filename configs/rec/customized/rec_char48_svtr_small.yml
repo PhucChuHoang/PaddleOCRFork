@@ -40,11 +40,12 @@ Architecture:
     name:         CTCHead
     Neck:                         
       name: svtr
-      dims: 64
+      dims: 192
       depth: 2
-      hidden_dims: 120
+      hidden_dims: 192
       use_guide: True
     fc_decay:     1.0e-5
+    in_channels: 192
     out_channels: *char_num
 
 Loss:
