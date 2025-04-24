@@ -39,11 +39,12 @@ Architecture:
     out_char_num: 6
   Head:
     name: CTCHead
-    permute: True
     fc_decay:     1.0e-5
     in_channels: 192
     out_channels: *char_num
-
+    transforms:
+      - permute:
+          axes: [0, 2, 1]
 Loss:
   name: CTCLoss
 
