@@ -36,6 +36,7 @@ Architecture:
     out_channels: 192
     img_size:     [48, 48]
     patch_size:   [4, 2]
+    out_char_num: -1
   Head:
     name:         CTCHead
     Neck:                         
