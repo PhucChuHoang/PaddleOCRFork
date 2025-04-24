@@ -1,0 +1,103 @@
+Global:
+  use_gpu:              true
+  distributed:          true
+  epoch_num:            40
+  log_smooth_window:    20
+  print_batch_step:     20
+  save_model_dir:       /kaggle/working/rec
+  save_epoch_step:      2
+  eval_batch_step:      [0, 3000]
+  character_dict_path:  ppocr/utils/dict/casia_hwdb_dict.txt
+  char_num:           &char_num  7187
+  max_text_length:    &max_len   1
+  use_space_char:       false
+  image_shape:          [3, 48, 48]
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Piecewise
+    values:         [0.003, 0.0003, 0.00003]
+    decay_epochs:   [40, 60]
+    warmup_epoch:   12
+  regularizer:
+    name: L2
+    factor: 3.0e-05
+
+Architecture:
+  model_type: "rec"
+  algorithm:  SVTRNet
+  Backbone:
+    name:         SVTRNet
+    model_name:   small
+    in_chans:     3
+    out_channels: 192
+    patch_size:   [4, 2]
+  Head:
+    name:         CTCHead
+    Neck:                         
+      name: svtr
+      dims: 64
+      depth: 2
+      hidden_dims: 120
+      use_guide: True
+    fc_decay:     1.0e-5
+    out_channels: *char_num
+
+Loss:
+  name: CTCLoss
+
+PostProcess:
+  name: CTCLabelDecode
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  use_space_char: false
+
+Metric:
+  name:           RecMetric
+  main_indicator: acc
+  ignore_space:   false
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data
+    label_file_list:
+      - ./train_labels/converted_casia_hwdb_train.txt
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - RecAug
+      - CTCLabelEncode
+      - RecResizeImg:
+          image_shape: [3, 48, 48]
+      - KeepKeys:
+          keep_keys: [image, label]
+  loader:
+    shuffle: true
+    batch_size_per_card: 384
+    drop_last: true
+    num_workers: 2
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data
+    label_file_list:
+      - ./train_labels/converted_casia_hwdb_test.txt
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - CTCLabelEncode
+      - RecResizeImg:
+          image_shape: [3, 48, 48]
+      - KeepKeys:
+          keep_keys: [image, label]
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 384
+    num_workers: 2
