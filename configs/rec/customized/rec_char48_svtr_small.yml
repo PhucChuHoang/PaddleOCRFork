@@ -71,7 +71,7 @@ Train:
       - RecResizeImg:
           image_shape: [3, 48, 48]
       - KeepKeys:
-          keep_keys: [image, label]
+          keep_keys: [image, label, length]
   loader:
     shuffle: true
     batch_size_per_card: 384
@@ -92,7 +92,7 @@ Eval:
       - RecResizeImg:
           image_shape: [3, 48, 48]
       - KeepKeys:
-          keep_keys: [image, label]
+          keep_keys: [image, label, length]
   loader:
     shuffle: false
     drop_last: false
