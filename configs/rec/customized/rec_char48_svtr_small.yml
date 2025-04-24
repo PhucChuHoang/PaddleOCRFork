@@ -69,8 +69,8 @@ Train:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
-      - RecAug
-      - CTCLabelEncode
+      - RecAug:
+      - CTCLabelEncode:
       - RecResizeImg:
           image_shape: [3, 48, 48]
       - KeepKeys:
@@ -91,7 +91,7 @@ Eval:
       - DecodeImage:
           img_mode: BGR
           channel_first: false
-      - CTCLabelEncode
+      - CTCLabelEncode:
       - RecResizeImg:
           image_shape: [3, 48, 48]
       - KeepKeys:
