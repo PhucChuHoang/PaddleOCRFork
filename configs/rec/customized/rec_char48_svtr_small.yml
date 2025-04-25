@@ -12,6 +12,7 @@ Global:
   max_text_length:    &max_len   1
   use_space_char:       false
   image_shape:          [3, 48, 48]
+  checkpoints: /kaggle/working/weights/latest
 
 Optimizer:
   name: Adam
