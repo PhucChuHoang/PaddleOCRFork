@@ -72,9 +72,9 @@ Train:
           img_mode: BGR
           channel_first: false
       - RecConAug:
-        prob: 0.5
-        ext_data_num: 2
-        image_shape: [48, 48, 3]
+          prob: 0.5
+          ext_data_num: 2
+          image_shape: [48, 48, 3]
       - RecAug:
       - CTCLabelEncode:
       - RecResizeImg:
