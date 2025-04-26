@@ -64,6 +64,7 @@ Train:
     data_dir: /kaggle/temp/extracted_data
     label_file_list:
       - ./train_labels/converted_casia_hwdb_train.txt
+    ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
           img_mode: BGR
