@@ -21,7 +21,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Piecewise
-    values: [0.0064, 0.00064, 0.000064]
+    values: [0.00128, 0.000128, 0.0000128]
     decay_epochs: [6, 16]             
     warmup_epoch: 1
   regularizer:
