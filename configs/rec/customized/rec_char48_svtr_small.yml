@@ -1,8 +1,10 @@
 Global:
+  debug: False
   use_gpu:              true
   distributed:          true
   epoch_num:            40
   log_smooth_window:    20
+  checkpoints: /kaggle/working/weights/latest
   print_batch_step:     20
   save_model_dir:       /kaggle/working/rec
   save_epoch_step:      2
@@ -12,7 +14,6 @@ Global:
   max_text_length:    &max_len   1
   use_space_char:       false
   image_shape:          [3, 48, 48]
-  checkpoints: /kaggle/working/weights/latest
 
 Optimizer:
   name: Adam
@@ -20,7 +21,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Piecewise
-    values: [0.0192, 0.00192, 0.000192]
+    values: [0.0128, 0.00128, 0.000128]
     decay_epochs:   [40, 60]
     warmup_epoch:   12
   regularizer:
@@ -75,9 +76,9 @@ Train:
           keep_keys: [image, label, length]
   loader:
     shuffle: true
-    batch_size_per_card: 768
+    batch_size_per_card: 512
     drop_last: true
-    num_workers: 4
+    num_workers: 2
 
 Eval:
   dataset:
@@ -97,5 +98,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 768
-    num_workers: 4
+    batch_size_per_card: 512
+    num_workers: 2
