@@ -24,9 +24,6 @@ Optimizer:
     values: [0.0128, 0.00128, 0.000128]
     decay_epochs: [8, 20]
     warmup_epoch: 2
-  grad_clip:
-    name: ClipGradByGlobalNorm
-    clip_norm: 5.0
   regularizer:
     name: L2
     factor: 3.0e-05
