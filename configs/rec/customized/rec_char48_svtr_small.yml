@@ -4,7 +4,7 @@ Global:
   distributed:          true
   epoch_num:            40
   log_smooth_window:    20
-  checkpoints: /kaggle/working/weights/latest
+  checkpoints: /kaggle/temp/weights/latest
   print_batch_step:     20
   save_model_dir:       /kaggle/working/rec
   save_epoch_step:      2
@@ -75,8 +75,9 @@ Train:
           image_shape: [48, 48, 3]
       - RecAug:
       - CTCLabelEncode:
-      - RecResizeImg:
+      - SVTRRecResizeImg:
           image_shape: [3, 48, 48]
+          pad: false
       - KeepKeys:
           keep_keys: [image, label, length]
   loader:
@@ -96,8 +97,9 @@ Eval:
           img_mode: BGR
           channel_first: false
       - CTCLabelEncode:
-      - RecResizeImg:
+      - SVTRRecResizeImg:
           image_shape: [3, 48, 48]
+          pad: false
       - KeepKeys:
           keep_keys: [image, label, length]
   loader:
