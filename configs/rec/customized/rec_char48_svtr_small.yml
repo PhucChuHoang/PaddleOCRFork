@@ -61,7 +61,7 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/extracted_data
+    data_dir: /kaggle/temp/extracted_data/augmented_images
     label_file_list:
       - ./train_labels/nom_train_data_1.txt
       - ./train_labels/nom_train_data_2.txt
@@ -91,7 +91,7 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/extracted_data
+    data_dir: /kaggle/temp/extracted_data/augmented_images
     label_file_list:
       - ./train_labels/converted_nom_test_data.txt
     transforms:
