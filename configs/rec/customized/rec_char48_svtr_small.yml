@@ -10,7 +10,7 @@ Global:
   save_epoch_step:      2
   eval_batch_step:      [0, 3000]
   character_dict_path:  ppocr/utils/dict/casia_hwdb_dict.txt
-  char_num:           &char_num  7187
+  char_num:           &char_num  10852
   max_text_length:    &max_len   1
   use_space_char:       false
   image_shape:          [3, 48, 48]
