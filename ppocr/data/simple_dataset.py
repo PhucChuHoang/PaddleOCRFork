@@ -117,40 +117,55 @@ class SimpleDataSet(Dataset):
         return ext_data
 
     def __getitem__(self, idx):
-        file_idx = self.data_idx_order_list[idx]
-        data_line = self.data_lines[file_idx]
-        try:
-            data_line = data_line.decode("utf-8")
-            substr = data_line.strip("\n").split(self.delimiter)
-            file_name = substr[0]
-            file_name = self._try_parse_filename_list(file_name)
-            label = substr[1]
-            img_path = os.path.join(self.data_dir, file_name)
-            data = {"img_path": img_path, "label": label}
-            if not os.path.exists(img_path):
-                raise Exception("{} does not exist!".format(img_path))
-            with open(data["img_path"], "rb") as f:
-                img = f.read()
-                data["image"] = img
-            data["ext_data"] = self.get_ext_data()
-            data["filename"] = data["img_path"]
-            outs = transform(data, self.ops)
-        except:
-            self.logger.error(
-                "When parsing line {}, error happened with msg: {}".format(
-                    data_line, traceback.format_exc()
+        file_idx   = self.data_idx_order_list[idx]
+        data_line  = self.data_lines[file_idx]
+        max_retry  = 10
+
+        for attempt in range(max_retry):
+            try:
+                # -------------- original parsing -----------------
+                data_line = data_line.decode("utf-8")
+                substr    = data_line.strip("\n").split(self.delimiter)
+                file_name = substr[0]
+                file_name = self._try_parse_filename_list(file_name)
+                label     = substr[1]
+
+                img_path  = os.path.join(self.data_dir, file_name)
+                if not os.path.exists(img_path):
+                    raise FileNotFoundError(img_path)
+
+                with open(img_path, "rb") as f:
+                    img = f.read()
+
+                data = {
+                    "img_path":  img_path,
+                    "label":     label,
+                    "image":     img,
+                    "filename":  img_path,
+                    "ext_data":  self.get_ext_data(),
+                }
+                outs = transform(data, self.ops)
+                if outs is not None:
+                    return outs                          # ← success!
+            # ------------------------------------------------------
+            except Exception as e:
+                self.logger.error(
+                    f"Failed ({attempt+1}/{max_retry}) on line {data_line!r} :\n"
+                    f"{traceback.format_exc(limit=1)}"
                 )
-            )
-            outs = None
-        if outs is None:
-            # during evaluation, we should fix the idx to get same results for many times of evaluation.
-            rnd_idx = (
-                np.random.randint(self.__len__())
-                if self.mode == "train"
-                else (idx + 1) % self.__len__()
-            )
-            return self.__getitem__(rnd_idx)
-        return outs
+
+            # pick another sample and try again
+            rnd_idx   = np.random.randint(self.__len__()) \
+                        if self.mode == "train" else (idx + 1) % self.__len__()
+            file_idx  = self.data_idx_order_list[rnd_idx]
+            data_line = self.data_lines[file_idx]
+
+        # after max_retry unsuccessful attempts
+        raise RuntimeError(
+            f"Could not load a valid image after {max_retry} trials; "
+            f"last tried path: {img_path}"
+        )
+
 
     def __len__(self):
         return len(self.data_idx_order_list)
