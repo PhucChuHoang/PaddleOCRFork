@@ -130,8 +130,8 @@ class SimpleDataSet(Dataset):
                 file_name = self._try_parse_filename_list(file_name)
                 label     = substr[1]
 
-                print("DEBUG: file_name = ", file_name)
-                print("DEBUG: label = ", label, len(label))
+                # print("DEBUG: file_name = ", file_name)
+                # print("DEBUG: label = ", label, len(label))
 
                 img_path  = os.path.join(self.data_dir, file_name)
                 if not os.path.exists(img_path):
