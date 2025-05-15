@@ -94,8 +94,8 @@ Eval:
     data_dir: /kaggle/temp/extracted_data/half_nom_small_formatted
     # data_dir: D:/University/Thesis/half_nom_small_formatted
     label_file_list:
-      - ./train_labels/test.txt
-      # - ./train_labels/test_han_test_data_converted.txt
+      # - ./train_labels/test.txt
+      - ./train_labels/test_han_test_data_converted.txt
       # - ./train_labels/final_nom_test_data_converted.txt
     transforms:
       - DecodeImage:
