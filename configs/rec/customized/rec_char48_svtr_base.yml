@@ -91,12 +91,12 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    # data_dir: /kaggle/temp/extracted_data/half_nom_small_formatted
-    data_dir: ./cropped_images
+    data_dir: /kaggle/temp/extracted_data/half_nom_small_formatted
+    # data_dir: ./cropped_images
     label_file_list:
-      - ./test_labels.txt
-      # - ./train_labels/test_han_test_data_converted.txt
-      # - ./train_labels/final_nom_test_data_converted.txt
+      # - ./test_labels.txt
+      - ./train_labels/test_han_test_data_converted.txt
+      - ./train_labels/final_nom_test_data_converted.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
