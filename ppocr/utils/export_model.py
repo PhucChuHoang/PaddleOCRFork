@@ -29,6 +29,13 @@ from ppocr.postprocess import build_post_process
 from ppocr.utils.save_load import load_model
 from ppocr.utils.logging import get_logger
 
+class _ExportWrapper(nn.Layer):
+    def __init__(self, base_model):
+        super().__init__()
+        self.base = base_model
+    def forward(self, x):
+        logits = self.base(x)       # [B, T, V]  – what you already had
+        return logits, logits       # (pred  , extra copy for beam-search)
 
 def represent_dictionary_order(self, dict_data):
     return self.represent_mapping("tag:yaml.org,2002:map", dict_data.items())

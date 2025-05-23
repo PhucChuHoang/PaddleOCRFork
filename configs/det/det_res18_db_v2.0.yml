@@ -1,10 +1,10 @@
 Global:
   use_gpu: true
-  epoch_num: 1200
+  epoch_num: 100
   log_smooth_window: 20
   print_batch_step: 2
-  save_model_dir: ./output/ch_db_res18/
-  save_epoch_step: 1200
+  save_model_dir: ./output/test-cong-giao/Resnet18/
+  save_epoch_step: 20
   # evaluation is run every 5000 iterations after the 4000th iteration
   eval_batch_step: [3000, 2000]
   cal_metric_during_train: False
@@ -64,9 +64,9 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/icdar2015/text_localization/
+    data_dir: ./train_data/
     label_file_list:
-      - ./train_data/icdar2015/text_localization/train_icdar2015_label.txt
+      - ./train_data/ConggiaoLabel.txt
     ratio_list: [1.0]
     transforms:
       - DecodeImage: # load image
@@ -106,9 +106,9 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/icdar2015/text_localization/
+    data_dir: ./train_data/
     label_file_list:
-      - ./train_data/icdar2015/text_localization/test_icdar2015_label.txt
+      - ./train_data/ConggiaoLabel.txt
     transforms:
       - DecodeImage: # load image
           img_mode: BGR
