@@ -1,0 +1,106 @@
+Global:
+  debug: False
+  use_gpu: true
+  distributed: true
+  epoch_num: 40
+  log_smooth_window: 20
+
+  # === reuse your old checkpoint for warm-starting ===========================
+  pretrained_model: /kaggle/temp/weights/latest      # folder with *.pdparams
+  # ===========================================================================
+  print_batch_step: 20
+  save_model_dir: /kaggle/working/rec
+  save_epoch_step: 2
+  eval_batch_step: [0, 3000]
+
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  char_num: &char_num 10852
+  max_text_length: &max_len 1     # harmless now
+  use_space_char: false
+  image_shape: [3, 48, 48]        # CHW used by runtime string
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Piecewise
+    values: [0.00128, 0.000128, 0.0000128]
+    decay_epochs: [6, 16]
+    warmup_epoch: 1
+  regularizer: { name: L2, factor: 3.0e-05 }
+
+###############################################################################
+#                               ARCHITECTURE                                  #
+###############################################################################
+Architecture:
+  model_type: "cls"          # ← was "rec"
+  algorithm:  "CLS"          # ← was "SVTR"
+
+  Backbone:
+    name: SVTRNet
+    model_name: base
+    in_chans: 3
+    out_channels: 384
+    img_size: [48, 48]
+    patch_size: [4, 2]
+    out_char_num: 6 
+    freeze_params: True
+
+  Head:
+    name: ClsHead
+    in_channels: 384
+    class_dim: *char_num
+    fc_decay: 1.0e-5
+
+Loss:
+  name: ClsLoss
+
+PostProcess:
+  name: ClsPostProcess       # new post-process for classification
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+
+Metric:
+  name: TopkAcc
+  topk: [1]
+
+###############################################################################
+#                               DATA PIPELINE                                 #
+###############################################################################
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data/augmented_images
+    label_file_list:
+      - ./train_labels/nom_train_data_1.txt
+      - ./train_labels/nom_train_data_2.txt
+      - ./train_labels/nom_train_data_3.txt
+    transforms:
+      - DecodeImage: { img_mode: BGR, channel_first: false }
+      - RecConAug:   { prob: 0.25, ext_data_num: 2, image_shape: [48, 48, 3] }
+      - RecAug:
+      - ClsLabelEncode:
+      - SVTRRecResizeImg: { image_shape: [3, 48, 48], pad: false }
+      - KeepKeys: { keep_keys: [image, label, length] }
+  loader:
+    shuffle: true
+    batch_size_per_card: 512
+    drop_last: true
+    num_workers: 2
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data/augmented_images
+    label_file_list:
+      - ./train_labels/converted_nom_test_data.txt
+    transforms:
+      - DecodeImage: { img_mode: BGR, channel_first: false }
+      - ClsLabelEncode:
+      - SVTRRecResizeImg: { image_shape: [3, 48, 48], pad: false }
+      - KeepKeys: { keep_keys: [image, label, length] }
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 512
+    num_workers: 2
