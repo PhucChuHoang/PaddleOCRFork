@@ -66,7 +66,7 @@ Train:
       - RecConAug:   { prob: 0.25, ext_data_num: 2, image_shape: [48, 48, 3] }
       - RecAug:
       - ClsLabelEncode:
-        label_list: ppocr/utils/dict/casia_hwdb_dict.txt
+          label_list: ppocr/utils/dict/casia_hwdb_dict.txt
       - SVTRRecResizeImg: { image_shape: [3, 48, 48], pad: false }
       - KeepKeys: { keep_keys: [image, label] }
   loader:
@@ -85,7 +85,7 @@ Eval:
     transforms:
       - DecodeImage: { img_mode: BGR, channel_first: false }
       - ClsLabelEncode:
-        label_list: ppocr/utils/dict/casia_hwdb_dict.txt
+          label_list: ppocr/utils/dict/casia_hwdb_dict.txt
       - SVTRRecResizeImg: { image_shape: [3, 48, 48], pad: false }
       - KeepKeys: { keep_keys: [image, label] }
   loader:
