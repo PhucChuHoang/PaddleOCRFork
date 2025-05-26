@@ -48,6 +48,11 @@ Architecture:
 Loss:
   name: ClsLoss
 
+Metric:
+  name: TopkAcc
+  topk: [1]
+  main_indicator: acc
+
 PostProcess:
   name: ClsPostProcess
   character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
