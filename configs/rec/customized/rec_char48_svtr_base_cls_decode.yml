@@ -49,8 +49,7 @@ Loss:
   name: ClsLoss
 
 Metric:
-  name: TopkAcc
-  topk: [1]
+  name: ClsMetric
   main_indicator: acc
 
 PostProcess:
