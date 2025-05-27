@@ -78,11 +78,11 @@ Train:
       - RecConAug:
           prob: 0.25
           ext_data_num: 2
-          image_shape: [48, 48, 3]
+          image_shape: [72, 72, 3]
       - RecAug:
       - CTCLabelEncode:
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 48]
+          image_shape: [3, 72, 72]
           pad: false
       - KeepKeys:
           keep_keys: [image, label, length]
@@ -107,7 +107,7 @@ Eval:
           channel_first: false
       - CTCLabelEncode:
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 48]
+          image_shape: [3, 72, 72]
           pad: false
       - KeepKeys:
           keep_keys: [image, label, length]
