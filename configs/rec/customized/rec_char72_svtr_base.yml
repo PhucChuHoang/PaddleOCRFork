@@ -1,0 +1,117 @@
+Global:
+  debug: False
+  use_gpu:              true
+  distributed:          true
+  epoch_num:            40
+  log_smooth_window:    20
+  # pretrained_model:   /kaggle/temp/weights/latest
+  checkpoints:          /kaggle/temp/weights/latest
+  print_batch_step:     20
+  save_model_dir:       /kaggle/working/rec
+  save_epoch_step:      2
+  eval_batch_step:      [0, 3000]
+  character_dict_path:   ppocr/utils/dict/casia_hwdb_dict.txt
+  char_num:           &char_num  10852
+  max_text_length:    &max_len   1
+  use_space_char:       false
+  image_shape:          [3, 72, 72]
+
+Optimizer:
+  name: Adam
+  beta1: 0.9
+  beta2: 0.999
+  lr:
+    name: Piecewise
+    values: [0.00128, 0.000128, 0.0000128]
+    decay_epochs: [6, 16]             
+    warmup_epoch: 1
+  regularizer:
+    name: L2
+    factor: 3.0e-05
+
+Architecture:
+  model_type: "rec"
+  algorithm: SVTR
+  Backbone:
+    name:         SVTRNet
+    model_name:   base
+    in_chans:     3
+    out_channels: 384
+    img_size:     [72, 72]
+    patch_size:   [4, 2]
+    out_char_num: 9 # W//4 or W//8 or W/12
+  Head:
+    name: CTCHeadTLast
+    in_channels: 384
+    fc_decay:   1.0e-5
+    out_channels: *char_num
+
+Loss:
+  name: CTCLoss
+
+PostProcess:
+  name: CTCLabelDecode
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  use_space_char: false
+
+Metric:
+  name:           RecMetric
+  main_indicator: acc
+  ignore_space:   false
+
+Train:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data/augmented_images
+    label_file_list:
+      # - ./train_labels/test_han_train_data_converted.txt
+      # - ./train_labels/final_nom_train_data_converted.txt
+      - ./train_labels/nom_train_data_1.txt
+      - ./train_labels/nom_train_data_2.txt
+      - ./train_labels/nom_train_data_3.txt
+    ext_op_transform_idx: 1
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - RecConAug:
+          prob: 0.25
+          ext_data_num: 2
+          image_shape: [48, 48, 3]
+      - RecAug:
+      - CTCLabelEncode:
+      - SVTRRecResizeImg:
+          image_shape: [3, 48, 48]
+          pad: false
+      - KeepKeys:
+          keep_keys: [image, label, length]
+  loader:
+    shuffle: true
+    batch_size_per_card: 512
+    drop_last: true
+    num_workers: 2
+
+Eval:
+  dataset:
+    name: SimpleDataSet
+    data_dir: /kaggle/temp/extracted_data/augmented_images
+    label_file_list:
+      # - ./train_labels/test.txt
+      # - ./train_labels/test_han_test_data_converted.txt
+      # - ./train_labels/final_nom_test_data_converted.txt
+      - ./train_labels/converted_nom_test_data.txt
+    transforms:
+      - DecodeImage:
+          img_mode: BGR
+          channel_first: false
+      - CTCLabelEncode:
+      - SVTRRecResizeImg:
+          image_shape: [3, 48, 48]
+          pad: false
+      - KeepKeys:
+          keep_keys: [image, label, length]
+  loader:
+    shuffle: false
+    drop_last: false
+    batch_size_per_card: 512
+    num_workers: 2
