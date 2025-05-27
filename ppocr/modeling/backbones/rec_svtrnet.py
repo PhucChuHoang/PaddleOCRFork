@@ -627,18 +627,10 @@ class SVTRNet(nn.Layer):
             len_x = self.len_conv(x.mean(1))
             len_x = self.dropout_len(self.hardswish_len(len_x))
         if self.last_stage:
-            print(">>> SVTRNet FORWARD DEBUG")
-            print("   x.shape before transpose:", x.shape)
-            print("   self.embed_dim[2]:", self.embed_dim[2])
-            print("   self.HW:", self.HW, " patch_merging:", self.patch_merging)
-            if self.patch_merging is not None:
-                h = self.HW[0] // 4
-            else:
-                h = self.HW[0]
-            print("   using h =", h, " w =", self.HW[1])
-            x = self.avg_pool(
-                x.transpose([0, 2, 1]).reshape([0, self.embed_dim[2], h, self.HW[1]])
-            )
+            x = x.transpose([0, 2, 1])                 # [B, C, T]
+            # reshape to [B, C, H, W] letting Paddle infer H
+            x = x.reshape([0, self.embed_dim[2], -1, self.HW[1]])
+            x = self.avg_pool(x)
             x = self.last_conv(x)
             x = self.hardswish(x)
             x = self.dropout(x)
