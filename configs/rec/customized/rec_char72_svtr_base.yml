@@ -22,7 +22,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Piecewise
-    values: [0.00128, 0.000128, 0.0000128]
+    values: [0.00064, 0.000064, 0.0000064]
     decay_epochs: [6, 16]             
     warmup_epoch: 1
   regularizer:
@@ -88,7 +88,7 @@ Train:
           keep_keys: [image, label, length]
   loader:
     shuffle: true
-    batch_size_per_card: 512
+    batch_size_per_card: 256
     drop_last: true
     num_workers: 2
 
@@ -114,5 +114,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 512
+    batch_size_per_card: 256
     num_workers: 2
