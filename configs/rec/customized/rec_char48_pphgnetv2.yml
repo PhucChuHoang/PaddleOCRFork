@@ -56,11 +56,14 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/extracted_data/augmented_images
+    data_dir: /kaggle/temp/extracted_data
     label_file_list:
-      - ./train_labels/nom_train_data_1.txt
-      - ./train_labels/nom_train_data_2.txt
-      - ./train_labels/nom_train_data_3.txt
+      # - ./train_labels/test_han_train_data_converted.txt
+      # - ./train_labels/final_nom_train_data_converted.txt
+      # - ./train_labels/nom_train_data_1.txt
+      # - ./train_labels/nom_train_data_2.txt
+      # - ./train_labels/nom_train_data_3.txt
+      - ./train_labels/converted_casia_hwdb_train.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -86,9 +89,12 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/extracted_data/augmented_images
+    data_dir: /kaggle/temp/extracted_data
     label_file_list:
-      - ./train_labels/converted_nom_test_data.txt
+      # - ./train_labels/test_han_test_data_converted.txt
+      # - ./train_labels/final_nom_test_data_converted.txt
+      # - ./train_labels/converted_nom_test_data.txt
+      - ./train_labels/converted_casia_hwdb_test.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
