@@ -30,7 +30,7 @@ Optimizer:
 
 Architecture:
   model_type: "rec"
-  algorithm: CTC
+  algorithm: CRNN
   Backbone:
     name: PPHGNetV2_B4
     text_rec: true
