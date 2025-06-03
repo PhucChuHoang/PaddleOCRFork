@@ -82,7 +82,7 @@ Train:
           keep_keys: [image, label, length]
   loader:
     shuffle: true
-    batch_size_per_card: 256
+    batch_size_per_card: 512
     drop_last: true
     num_workers: 2
 
@@ -108,5 +108,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 256
+    batch_size_per_card: 512
     num_workers: 2
