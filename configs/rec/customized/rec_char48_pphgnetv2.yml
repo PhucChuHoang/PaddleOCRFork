@@ -8,7 +8,7 @@ Global:
   print_batch_step: 20
   save_model_dir: /kaggle/working/rec
   save_epoch_step: 1
-  eval_batch_step: [0, 3000]
+  eval_batch_step: [0, 2000]
   character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
   char_num: &char_num 10852
   max_text_length: &max_len 1
@@ -35,8 +35,7 @@ Architecture:
     name: PPHGNetV2_B4
     text_rec: true
   Head:
-    name: CTCHeadTLast
-    in_channels: 2048
+    name: CTCHead
     fc_decay: 1.0e-5
     out_channels: *char_num
 
