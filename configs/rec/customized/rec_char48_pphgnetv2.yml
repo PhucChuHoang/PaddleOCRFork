@@ -36,6 +36,7 @@ Architecture:
     text_rec: true
   Head:
     name: CTCHead
+    in_channels: 2048
     fc_decay: 1.0e-5
     out_channels: *char_num
 
