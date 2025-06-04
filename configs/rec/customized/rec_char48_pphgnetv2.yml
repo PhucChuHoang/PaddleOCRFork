@@ -35,6 +35,13 @@ Architecture:
   Backbone:
     name: PPHGNetV2_B4
     text_rec: true
+  Neck:
+    name: svtr
+    dims: 256
+    depth: 2
+    hidden_dims: 256
+    kernel_size: [1, 3]
+    use_guide: True
   Head:
     name: CTCHead
     in_channels: 2048
