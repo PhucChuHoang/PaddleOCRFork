@@ -31,7 +31,7 @@ Optimizer:
 
 Architecture:
   model_type: "rec"
-  algorithm: CRNN
+  algorithm: Base
   Backbone:
     name: PPHGNetV2_B4
     text_rec: true
