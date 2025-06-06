@@ -226,6 +226,80 @@ class CTCLabelDecode(BaseRecLabelDecode):
         return dict_character
 
 
+class CTCLabelDecodeTopK(CTCLabelDecode):
+    """Convert between text-label and text-index with top-k results"""
+
+    def __init__(self, character_dict_path=None, use_space_char=False, k=5, **kwargs):
+        super(CTCLabelDecodeTopK, self).__init__(character_dict_path, use_space_char)
+        self.k = k
+        
+    def __call__(self, preds, label=None, return_word_box=False, *args, **kwargs):
+        if isinstance(preds, tuple) or isinstance(preds, list):
+            preds = preds[-1]
+        if isinstance(preds, paddle.Tensor):
+            preds = preds.numpy()
+        
+        # Convert to list to store multiple results per image
+        batch_size = preds.shape[0]
+        seq_len = preds.shape[1]
+        top_k_results = [[] for _ in range(batch_size)]
+        
+        # For each element in the batch
+        for batch_idx in range(batch_size):
+            # Get top-k logits and indices for each position in the sequence
+            top_k_preds = []
+            for pos in range(seq_len):
+                logits = preds[batch_idx, pos, :]
+                values, indices = paddle.topk(paddle.to_tensor(logits), k=self.k)
+                top_k_preds.append((values.numpy(), indices.numpy()))
+            
+            # Start with the top-1 prediction as a baseline
+            preds_idx = preds[batch_idx].argmax(axis=1)
+            preds_prob = preds[batch_idx].max(axis=1)
+            text = self.decode(
+                preds_idx[np.newaxis, :],
+                preds_prob[np.newaxis, :],
+                is_remove_duplicate=True,
+                return_word_box=return_word_box,
+            )
+            top_k_results[batch_idx].append(text[0])
+            
+            # Generate alternative paths based on second, third, etc. best predictions
+            # Only replace characters with lower confidence (optional)
+            for alt_idx in range(1, self.k):  # Use the full requested k value
+                # Find positions with lower confidence
+                confidence_threshold = np.percentile(preds_prob, 50)  # Adjust threshold as needed
+                low_conf_positions = np.where(preds_prob < confidence_threshold)[0]
+                
+                if len(low_conf_positions) > 0:
+                    # Create a modified prediction
+                    alt_preds_idx = preds_idx.copy()
+                    alt_preds_prob = preds_prob.copy()
+                    
+                    # Modify some of the lower confidence positions with alternative predictions
+                    for pos in low_conf_positions:  # Use all lower confidence positions
+                        if alt_idx < len(top_k_preds[pos][1]):
+                            alt_preds_idx[pos] = top_k_preds[pos][1][alt_idx]
+                            alt_preds_prob[pos] = top_k_preds[pos][0][alt_idx]
+                    
+                    # Decode this alternative prediction
+                    alt_text = self.decode(
+                        alt_preds_idx[np.newaxis, :],
+                        alt_preds_prob[np.newaxis, :],
+                        is_remove_duplicate=True,
+                        return_word_box=return_word_box,
+                    )
+                    
+                    # Only add if different from previous results
+                    if alt_text[0][0] not in [res[0] for res in top_k_results[batch_idx]]:
+                        top_k_results[batch_idx].append(alt_text[0])
+        
+        if label is None:
+            return top_k_results
+        label = self.decode(label)
+        return top_k_results, label
+
+
 class DistillationCTCLabelDecode(CTCLabelDecode):
     """
     Convert
@@ -1199,8 +1273,6 @@ class CPPDLabelDecode(NRTRLabelDecode):
                 preds = preds[-1].numpy()
         if isinstance(preds, paddle.Tensor):
             preds = preds.numpy()
-        else:
-            preds = preds
         preds_idx = preds.argmax(axis=2)
         preds_prob = preds.max(axis=2)
         text = self.decode(preds_idx, preds_prob, is_remove_duplicate=False)
@@ -1252,7 +1324,7 @@ class LaTeXOCRDecode(object):
             .strip()
             for detok in dec
         ]
-        return [self.post_process(dec_str) for dec_str in dec_str_list]
+        return [self.post_process(text) for text in dec_str_list]
 
     def __call__(self, preds, label=None, mode="eval", *args, **kwargs):
         if mode == "train":
@@ -1463,25 +1535,10 @@ class UniMERNetDecode(object):
         text_reg = r"(\\(operatorname|mathrm|text|mathbf)\s?\*? {.*?})"
         letter = "[a-zA-Z]"
         noletter = "[\W_^\d]"
-        names = []
-        for x in re.findall(text_reg, s):
-            pattern = r"\\[a-zA-Z]+"
-            pattern = r"(\\[a-zA-Z]+)\s(?=\w)|\\[a-zA-Z]+\s(?=})"
-            matches = re.findall(pattern, x[0])
-            for m in matches:
-                if (
-                    m
-                    not in [
-                        "\\operatorname",
-                        "\\mathrm",
-                        "\\text",
-                        "\\mathbf",
-                    ]
-                    and m.strip() != ""
-                ):
-                    s = s.replace(m, m + "XXXXXXX")
-                    s = s.replace(" ", "")
-                    names.append(s)
+        names = [x[0].replace(" ", "") for x in re.findall(text_reg, s)]
+        for x in names:
+            s = s.replace(x, x + "XXXXXXX")
+            s = s.replace(" ", "")
         if len(names) > 0:
             s = re.sub(text_reg, lambda match: str(names.pop(0)), s)
         news = s

@@ -50,12 +50,13 @@ Loss:
   name: CTCLoss
 
 PostProcess:
-  name: CTCLabelDecode
+  name: CTCLabelDecodeTopK
   character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
   use_space_char: false
+  k: 5
 
 Metric:
-  name:           RecMetric
+  name:           RecMetricTopK
   main_indicator: acc
   ignore_space:   false
 

@@ -78,6 +78,85 @@ class RecMetric(object):
         self.norm_edit_dis = 0
 
 
+class RecMetricTopK(RecMetric):
+    """Recognition metric with top-k results support"""
+
+    def __init__(
+        self, main_indicator="acc", is_filter=False, ignore_space=True, **kwargs
+    ):
+        super(RecMetricTopK, self).__init__(main_indicator, is_filter, ignore_space, **kwargs)
+        
+    def __call__(self, pred_label, *args, **kwargs):
+        preds, labels = pred_label
+        correct_num = 0
+        all_num = 0
+        norm_edit_dis = 0.0
+        top1_correct_num = 0
+        
+        for pred_list, (target, _) in zip(preds, labels):
+            batch_correct = False
+            batch_best_edit_dis = 1.0  # Start with worst possible edit distance
+            
+            # Process all candidates for each sample
+            for pred_candidate in pred_list:
+                pred = pred_candidate[0]
+                pred_conf = pred_candidate[1]
+                
+                if self.ignore_space:
+                    pred = pred.replace(" ", "")
+                    current_target = target.replace(" ", "")
+                else:
+                    current_target = target
+                    
+                if self.is_filter:
+                    pred = self._normalize_text(pred)
+                    current_target = self._normalize_text(current_target)
+                    
+                # Calculate edit distance for this candidate
+                edit_dis = Levenshtein.normalized_distance(pred, current_target)
+                
+                # Keep track of best edit distance across all candidates
+                batch_best_edit_dis = min(batch_best_edit_dis, edit_dis)
+                
+                # If any candidate matches exactly, mark as correct
+                if pred == current_target:
+                    batch_correct = True
+                    
+                # Check if top-1 prediction is correct (first in the list)
+                if pred_candidate == pred_list[0] and pred == current_target:
+                    top1_correct_num += 1
+            
+            # Add best result for this batch sample
+            if batch_correct:
+                correct_num += 1
+                
+            # Add best edit distance for this batch sample
+            norm_edit_dis += batch_best_edit_dis
+            all_num += 1
+            
+        self.correct_num += correct_num
+        self.all_num += all_num
+        self.norm_edit_dis += norm_edit_dis
+        
+        return {
+            "acc": correct_num / (all_num + self.eps),
+            "top1_acc": top1_correct_num / (all_num + self.eps),
+            "norm_edit_dis": 1 - norm_edit_dis / (all_num + self.eps),
+        }
+        
+    def get_metric(self):
+        """
+        return metrics {
+                 'acc': 0,
+                 'norm_edit_dis': 0,
+            }
+        """
+        acc = 1.0 * self.correct_num / (self.all_num + self.eps)
+        norm_edit_dis = 1 - self.norm_edit_dis / (self.all_num + self.eps)
+        self.reset()
+        return {"acc": acc, "norm_edit_dis": norm_edit_dis}
+
+
 class CNTMetric(object):
     def __init__(self, main_indicator="acc", **kwargs):
         self.main_indicator = main_indicator

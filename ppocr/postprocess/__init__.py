@@ -28,6 +28,7 @@ from .sast_postprocess import SASTPostProcess
 from .fce_postprocess import FCEPostProcess
 from .rec_postprocess import (
     CTCLabelDecode,
+    CTCLabelDecodeTopK,
     AttnLabelDecode,
     SRNLabelDecode,
     DistillationCTCLabelDecode,
@@ -101,6 +102,7 @@ def build_post_process(config, global_config=None):
         "CPPDLabelDecode",
         "LaTeXOCRDecode",
         "UniMERNetDecode",
+        "CTCLabelDecodeTopK",
     ]
 
     if config["name"] == "PSEPostProcess":
