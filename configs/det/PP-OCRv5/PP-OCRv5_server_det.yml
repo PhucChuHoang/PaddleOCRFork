@@ -149,7 +149,7 @@ Eval:
     - DetLabelEncode: null
     - DetResizeForTest:
         limit_side_len: 1024
-        limit_type: min
+        limit_type: max
     - NormalizeImage:
         scale: 1./255.
         mean:
