@@ -1,7 +1,7 @@
 Global:
   use_amp: true 
   amp_level: O2
-  model_name: PP-OCRv5_server_det # To use static model for inference.
+  # model_name: PP-OCRv5_server_det # To use static model for inference.
   debug: false
   use_gpu: true
   epoch_num: &epoch_num 50
@@ -11,9 +11,10 @@ Global:
   save_epoch_step: 2
   eval_batch_step:
   - 0
-  - 1500
+  - 15000
   cal_metric_during_train: false
   checkpoints: /kaggle/temp/weights/latest
+  # checkpoints: C:/Users/ADMIN/Downloads/detection_results/rec/latest
   # pretrained_model: /kaggle/temp/weights/latest
   save_inference_dir: null
   use_visualdl: false
@@ -141,9 +142,10 @@ Eval:
   dataset:
     name: SimpleDataSet
     data_dir: /kaggle/temp/extracted_data
+    # data_dir: C:\Users\ADMIN\Downloads\M5HisDoc\M5HisDoc
     label_file_list:
       - ./train_labels/detection_test.txt
-    transforms:
+      # - C:/Users/ADMIN/Downloads/M5HisDoc/M5HisDoc/val_labels.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -174,5 +176,5 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 1
-    num_workers: 2
+    num_workers: 8
 profiler_options: null
