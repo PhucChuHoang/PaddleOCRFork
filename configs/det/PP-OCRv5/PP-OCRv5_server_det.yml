@@ -1,6 +1,6 @@
 Global:
-  use_amp: true 
-  amp_level: O2
+  use_amp: false
+  # amp_level: O2
   # model_name: PP-OCRv5_server_det # To use static model for inference.
   debug: false
   use_gpu: true
@@ -53,7 +53,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.001 # 2gpu
+    learning_rate: 0.00025 # 2gpu
     warmup_epoch: 2
   regularizer:
     name: L2
