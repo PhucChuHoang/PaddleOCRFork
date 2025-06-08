@@ -1,4 +1,6 @@
 Global:
+  use_amp: true 
+  amp_level: O2
   model_name: PP-OCRv5_server_det # To use static model for inference.
   debug: false
   use_gpu: true
@@ -148,7 +150,7 @@ Eval:
         channel_first: false
     - DetLabelEncode: null
     - DetResizeForTest:
-        limit_side_len: 1024
+        limit_side_len: 896
         limit_type: max
     - NormalizeImage:
         scale: 1./255.
