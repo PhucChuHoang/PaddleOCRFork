@@ -174,5 +174,5 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 1
-    num_workers: 8
+    num_workers: 2
 profiler_options: null
