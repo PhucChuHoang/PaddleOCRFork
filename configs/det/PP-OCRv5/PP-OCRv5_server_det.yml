@@ -148,6 +148,8 @@ Eval:
         channel_first: false
     - DetLabelEncode: null
     - DetResizeForTest:
+        limit_side_len: 1024
+        limit_type: min
     - NormalizeImage:
         scale: 1./255.
         mean:
