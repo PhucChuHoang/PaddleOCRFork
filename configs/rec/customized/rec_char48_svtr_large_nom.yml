@@ -48,37 +48,22 @@ Architecture:
     last_stage: False
     prenorm: True
   Head:
-    name: MultiHead
-    use_pool: true
-    use_pos: true
-    head_list:
-      - CTCHead:
-          Neck:
-            name: svtr
-            dims: 256
-            depth: 2
-            hidden_dims: 256
-            kernel_size: [1, 3]
-            use_guide: True
-          Head:
-            fc_decay: 0.00001
-      - NRTRHead:
-          nrtr_dim: 512
-          max_text_length: *max_text_length
+    name: CTCHeadTLast
+    in_channels: 512  # Match the backbone out_channels
+    fc_decay: 1.0e-5
+    out_channels: *char_num
 
 Loss:
-  name: MultiLoss
-  loss_config_list:
-    - CTCLoss:
-    - NRTRLoss:
+  name: CTCLoss
 
 PostProcess:  
-  name: CTCLabelDecode
+  name: CTCLabelDecodeTopK
   character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
   use_space_char: false
+  k: 5
 
 Metric:
-  name: RecMetric
+  name: RecMetricTopK
   main_indicator: acc
   ignore_space: false
 
@@ -101,17 +86,14 @@ Train:
         ext_data_num: 2
         image_shape: [48, 48, 3]
     - RecAug:
-    - MultiLabelEncode:
-        gtc_encode: NRTRLabelEncode
+    - CTCLabelEncode:
     - RecResizeImg:
         image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
-        - label_ctc
-        - label_gtc
+        - label
         - length
-        - valid_ratio
   loader:
     shuffle: true
     batch_size_per_card: 256  # Reduced due to larger model
@@ -129,17 +111,14 @@ Eval:
     - DecodeImage:
         img_mode: BGR
         channel_first: false
-    - MultiLabelEncode:
-        gtc_encode: NRTRLabelEncode
+    - CTCLabelEncode:
     - RecResizeImg:
         image_shape: [3, 48, 48]
     - KeepKeys:
         keep_keys:
         - image
-        - label_ctc
-        - label_gtc
+        - label
         - length
-        - valid_ratio
   loader:
     shuffle: false
     drop_last: false
