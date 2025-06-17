@@ -5,7 +5,7 @@ Global:
   epoch_num: 40
   log_smooth_window: 20
   print_batch_step: 20
-  # checkpoints: /kaggle/temp/weights/latest
+  checkpoints: /kaggle/temp/weights/latest
   save_model_dir: /kaggle/working/rec
   save_epoch_step: 2
   eval_batch_step: [0, 3000]
