@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 import os
 from PIL import Image, ImageDraw, ImageFont
 import glob
@@ -12,7 +11,7 @@ def setup_font(font_size=16):
     except IOError:
         return ImageFont.load_default()
 
-def load_alignment_results(alignment_file):
+def load_alignment_results(alignment_file: str):
     """Load alignment results from a PaddleOCR format file."""
     try:
         alignment_data = []
@@ -62,7 +61,7 @@ def load_alignment_results(alignment_file):
         print(f"Error loading {alignment_file}: {e}")
         return []
 
-def parse_coordinates(coordinates):
+def parse_coordinates(coordinates: str|list):
     """Parse coordinate data and convert to usable format."""
     try:
         # Handle different coordinate formats
@@ -98,7 +97,7 @@ def parse_coordinates(coordinates):
         print(f"Error parsing coordinates {coordinates}: {e}")
         return None
 
-def get_status_color(status, similarity=0.0):
+def get_status_color(status: str, similarity=0.0):
     """Get color based on alignment status and similarity."""
     if status == 'MATCHED':
         # For PaddleOCR format, all entries are considered matched
@@ -114,7 +113,7 @@ def get_status_color(status, similarity=0.0):
     else:  # MISSING_OCR, BOTH_MISSING, or no match
         return (255, 0, 0), (200, 0, 0)  # Red
 
-def visualize_alignment_on_image(image_path, alignment_data, output_path):
+def visualize_alignment_on_image(image_path: str, alignment_data: list[dict], output_path: str):
     """Visualize alignment results on the original image."""
     try:
         # Load image
@@ -153,22 +152,17 @@ def visualize_alignment_on_image(image_path, alignment_data, output_path):
             
             # Prepare text label
             if status == 'MATCHED':
-                # For PaddleOCR format, show the corrected label
                 label = f"Text: {corrected_label}"
-                label_color = text_color
             elif status == 'LOW_SIMILARITY':
                 if original_ocr != corrected_label:
                     label = f"OCR: {original_ocr}\nGT: {corrected_label}\nSim: {similarity:.2f}"
-                    label_color = text_color
                 else:
                     label = f"Match: {original_ocr}\nSim: {similarity:.2f}"
-                    label_color = text_color
             elif status == 'EXTRA_OCR':
                 label = f"Extra: {original_ocr}"
-                label_color = text_color
             else:
                 label = f"No Match: {original_ocr}"
-                label_color = text_color
+            label_color = text_color
             
             # Position for text (above the box)
             text_x = int(min([p[0] for p in box_points]))
@@ -193,11 +187,11 @@ def visualize_alignment_on_image(image_path, alignment_data, output_path):
         # Add legend
         legend_y = 10
         legend_items = [
-            ("✅ Training Data", (0, 255, 0)),
-            ("⚠️ Low Similarity", (255, 165, 0)),
-            ("⚠️ Very Low Sim", (255, 255, 0)),
-            ("🔴 Extra OCR", (255, 0, 255)),
-            ("❌ No Match", (255, 0, 0))
+            ("Training Data", (0, 255, 0)),
+            ("Low Similarity", (255, 165, 0)),
+            ("Very Low Sim", (255, 255, 0)),
+            ("Extra OCR", (255, 0, 255)),
+            ("No Match", (255, 0, 0))
         ]
         
         for i, (text, color) in enumerate(legend_items):
@@ -217,7 +211,7 @@ def visualize_alignment_on_image(image_path, alignment_data, output_path):
         print(f"Error visualizing {image_path}: {e}")
         return False
 
-def find_alignment_files(aligned_data_folder):
+def find_alignment_files(aligned_data_folder: str):
     """Find all alignment PaddleOCR files in the aligned data folder."""
     pattern = os.path.join(aligned_data_folder, '*', '*_training_paddleocr.txt')
     paddle_files = glob.glob(pattern)
@@ -227,7 +221,7 @@ def find_alignment_files(aligned_data_folder):
 def main():
     """Main function to visualize all aligned data."""
     # Configuration
-    images_folder = 'thang10/images'  # Original images folder
+    images_folder = 'test_img'  # Original images folder
     aligned_data_folder = 'aligned_data'  # Aligned data folder
     output_folder = 'alignment_visualizations'  # Output folder for visualizations
     
@@ -264,7 +258,7 @@ def main():
         base_name = Path(alignment_file).parent.name
         
         # Find corresponding image
-        image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif']
+        image_extensions = ['.png', '.jpg', '.jpeg']
         image_path = None
         
         for ext in image_extensions:
