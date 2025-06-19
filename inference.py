@@ -922,35 +922,35 @@ def save_training_data(training_data, output_file='training_data.txt', format_ty
 def save_paddleocr_format(training_data, output_file, actual_image_path=None):
     """Save in PaddleOCR training format: image_path\t[coordinates, label]"""
     with open(output_file, 'w', encoding='utf-8') as f:
-        # Group by line for better organization
-        current_line = None
-        line_entries = []
+        # Group by cluster for better organization
+        current_cluster = None
+        cluster_entries = []
         
         for entry in training_data:
-            line_index = entry['line_index']
+            cluster_label = entry['cluster_label']
             
-            if current_line != line_index:
-                # Write previous line if exists
-                if line_entries:
-                    write_paddleocr_line(f, current_line, line_entries, actual_image_path)
+            if current_cluster != cluster_label:
+                # Write previous cluster if exists
+                if cluster_entries:
+                    write_paddleocr_line(f, current_cluster, cluster_entries, actual_image_path)
                 
-                # Start new line
-                current_line = line_index
-                line_entries = [entry]
+                # Start new cluster
+                current_cluster = cluster_label
+                cluster_entries = [entry]
             else:
-                line_entries.append(entry)
+                cluster_entries.append(entry)
         
-        # Write last line
-        if line_entries:
-            write_paddleocr_line(f, current_line, line_entries, actual_image_path)
+        # Write last cluster
+        if cluster_entries:
+            write_paddleocr_line(f, current_cluster, cluster_entries, actual_image_path)
 
-def write_paddleocr_line(f, line_index, entries, actual_image_path=None):
-    """Write a single line in PaddleOCR format"""
+def write_paddleocr_line(f, cluster_label, entries, actual_image_path=None):
+    """Write a single cluster in PaddleOCR format"""
     # Use actual image path if provided, otherwise use dummy path
     if actual_image_path:
         image_path = os.path.basename(actual_image_path)
     else:
-        image_path = f"line_{line_index}.jpg"
+        image_path = f"cluster_{cluster_label}.jpg"
     
     annotations = []
     for entry in entries:
