@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 
 # Configuration constants
-DET_MODEL_DIR = 'D:/University/Thesis/PaddleOCRFork/exported_det'
-REC_MODEL_DIR = 'D:/University/Thesis/PaddleOCRFork/exported_rec'
-REC_CHAR_DICT_PATH = 'D:/University/Thesis/PaddleOCRFork/ppocr/utils/dict/casia_hwdb_dict.txt'
-NOM_DICT_PATH = 'D:/University/Thesis/PaddleOCRFork/new_dict.txt'
+DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
+REC_MODEL_DIR = 'inference/customized/svtr_base'
+REC_CHAR_DICT_PATH = 'ppocr/utils/dict/casia_hwdb_dict.txt'
+NOM_DICT_PATH = 'nom_dict.txt'
 
 def initialize_ocr():
     """Initialize and return PaddleOCR instance with predefined configuration."""
@@ -344,9 +344,9 @@ def normalize_text(text, is_vietnamese=True):
 def main():
     """Main execution function - runs batch processing automatically."""
     # Default settings for batch processing
-    images_folder = 'fix_img'  # Default images folder
-    texts_folder = 'fix_txt'  # Default text files folder
-    output_folder = 'fix_aligned'  # Default output folder
+    images_folder = 'thang1/thang_1_img'  # Default images folder
+    texts_folder = 'thang1/thang_1_txt'  # Default text files folder
+    output_folder = 'thang1/thang_1_aligned'  # Default output folder
     threshold = 0  # Default similarity threshold
     is_vertical = True  # Default text orientation (vertical)
     debug = False  # Disable debug mode for automatic processing
@@ -393,58 +393,6 @@ def main():
         print(f"Use combined_training_paddleocr.txt for PaddleOCR training.")
     else:
         print("Batch processing failed!")
-
-def save_sentence_alignment_results(aligned_results, output_file='sentence_alignment_results.txt'):
-    """
-    Save sentence-level alignment results to a text file.
-    
-    Parameters:
-        aligned_results: List of sentence alignment results
-        output_file: Output file path
-    """
-    try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write("VIETNAMESE SENTENCE-LEVEL ALIGNMENT RESULTS\n")
-            f.write("=" * 60 + "\n\n")
-            
-            matched_count = sum(1 for result in aligned_results if result['status'] == 'MATCHED')
-            
-            for result in aligned_results:
-                cluster_label = result['cluster_label']
-                ocr_sentence = result['ocr_sentence']
-                reference_sentence = result['reference_sentence']
-                similarity = result['similarity']
-                word_details = result['word_details']
-                status = result['status']
-                
-                f.write(f"=== Line {cluster_label} ===\n")
-                f.write(f"OCR Sentence: {ocr_sentence}\n")
-                
-                if status == 'MATCHED':
-                    f.write(f"✓ MATCHED Reference: {reference_sentence}\n")
-                    f.write(f"✓ Similarity Score: {similarity:.3f}\n")
-                else:
-                    f.write(f"✗ NO MATCH (best similarity: {similarity:.3f})\n")
-                
-                f.write(f"\nWord breakdown ({len(word_details)} words):\n")
-                for i, word_detail in enumerate(word_details):
-                    coords = word_detail['coordinates']
-                    viet_text = word_detail['vietnamese_text']
-                    confidence = word_detail['confidence']
-                    f.write(f"  {i+1:2d}: '{viet_text}' (conf: {confidence:.2f}, coords: {coords})\n")
-                
-                f.write("\n" + "-" * 50 + "\n\n")
-            
-            f.write("=" * 60 + "\n")
-            f.write(f"SUMMARY:\n")
-            f.write(f"  Total lines: {len(aligned_results)}\n")
-            f.write(f"  Successfully matched: {matched_count}/{len(aligned_results)}\n")
-            f.write(f"  Match Rate: {matched_count/len(aligned_results)*100:.1f}%\n")
-        
-        print(f"Sentence alignment results saved to {output_file}")
-        
-    except Exception as e:
-        print(f"Error saving sentence alignment results: {e}")
 
 def levenshtein_distance_words(words1, words2):
     """
@@ -687,7 +635,7 @@ def find_sequential_sentence_alignment(clustered_result, reference_texts, thresh
 
 def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0.5, is_vertical=True, visualize=True, debug=False, use_anchors=True):
     """
-    Main function for sentence-level alignment with optional anchor-based improvement.
+    Main function with word-level anchor-based alignment as requested by user.
     
     Parameters:
         img_path: Path to input image
@@ -696,7 +644,7 @@ def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0
         is_vertical: Text layout orientation  
         visualize: Whether to create visualizations
         debug: Whether to show debug information
-        use_anchors: Whether to use anchor-based alignment (recommended)
+        use_anchors: Whether to use word-level anchor-based alignment (recommended)
         
     Returns:
         tuple: (original_ocr_results, clustered_results, aligned_results)
@@ -706,30 +654,31 @@ def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0
     original_result, clustered_result = process_image(img_path, is_vertical, visualize=False)
     
     print(f"\nFound {len(clustered_result)} {'columns' if is_vertical else 'rows'} (OCR lines)")
-    print(f"Have {len(reference_texts)} reference sentences")
     
     if use_anchors:
-        print("Using anchor-based alignment for improved accuracy...")
+        print("Using WORD-LEVEL anchor-based alignment as requested...")
         
-        # Find anchor points
-        anchor_points = find_anchor_points(
-            clustered_result, 
-            reference_texts, 
-            min_similarity=0.7,  # Lower threshold for anchor detection
-            is_vietnamese=True
-        )
+        # Load Vietnamese dictionary
+        nom_dict = load_nom_dictionary()
         
-        # Perform anchor-guided alignment
-        aligned_results = anchor_guided_alignment(
-            clustered_result, 
-            reference_texts, 
-            anchor_points,
+        # Extract all words with coordinates in reading order 
+        ocr_words_with_coords = extract_all_words_with_coordinates(clustered_result, nom_dict)
+        
+        # Combine all reference texts into one text for word-level processing
+        combined_reference_text = ' '.join(reference_texts)
+        print(f"Combined reference text: {len(combined_reference_text.split())} words")
+        
+        # Perform word-level anchor-guided alignment
+        aligned_results = word_level_anchor_guided_alignment(
+            ocr_words_with_coords, 
+            combined_reference_text,
+            min_anchor_similarity=0.9,  # High threshold for exact word matches
             threshold=threshold, 
             is_vietnamese=True,
             debug=debug
         )
     else:
-        print("Using sequential 1-to-1 alignment...")
+        print("Using sequential sentence-level alignment...")
         print(f"Similarity threshold: {threshold} (for quality reporting)")
         
         aligned_results = find_sequential_sentence_alignment(
@@ -746,7 +695,10 @@ def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0
         visualize_results(img, original_result, 'original_ocr_visualization.jpg')
         
         # Create alignment visualization
-        visualize_sequential_alignment(img, aligned_results, 'alignment_visualization.jpg')
+        if use_anchors:
+            visualize_word_level_alignment(img, aligned_results, 'word_level_alignment_visualization.jpg')
+        else:
+            visualize_sequential_alignment(img, aligned_results, 'alignment_visualization.jpg')
     
     return original_result, clustered_result, aligned_results
 
@@ -841,11 +793,10 @@ def visualize_sequential_alignment(image, aligned_results, output_path='sequenti
 
 def generate_training_data_from_alignment(aligned_results):
     """
-    Generate training data by replacing OCR text with ground truth labels from alignment.
+    Generate training data from word-level alignment results.
     
     Parameters:
-        aligned_results: List of sequential alignment results
-        output_format: Format for training data ('paddleocr', 'json', 'txt')
+        aligned_results: List of word-level alignment results
         
     Returns:
         list: Training data entries with coordinates and corrected labels
@@ -855,96 +806,45 @@ def generate_training_data_from_alignment(aligned_results):
     for result in aligned_results:
         pair_index = result['pair_index']
         cluster_label = result['cluster_label']
-        ocr_sentence = result['ocr_sentence']
-        reference_sentence = result['reference_sentence']
+        ocr_word = result.get('ocr_word', '')
+        reference_word = result.get('reference_word', '')
         similarity = result['similarity']
-        word_details = result['word_details']
+        word_detail = result.get('word_detail')
         status = result['status']
+        alignment_type = result.get('alignment_type', 'UNKNOWN')
         
-        # Only process pairs that have both OCR and reference text
-        if status in ['MATCHED', 'LOW_SIMILARITY'] and reference_sentence and word_details:
-            # Normalize both texts for word alignment
-            ocr_words = normalize_vietnamese_text(ocr_sentence).split()
-            ref_words = normalize_vietnamese_text(reference_sentence).split()
+        # Only process entries that have OCR word and word detail
+        if word_detail and ocr_word:
+            coordinates = word_detail['coordinates']
+            original_text = word_detail['vietnamese_text']
+            confidence = word_detail['confidence']
             
-            # Create word-to-word mapping
-            word_mapping = align_words_for_training(ocr_words, ref_words, word_details)
+            # Determine corrected label based on alignment
+            if status in ['MATCHED', 'LOW_SIMILARITY'] and reference_word:
+                # Use reference word as corrected label
+                corrected_label = reference_word
+            elif status == 'EXTRA_OCR':
+                # Keep original OCR text for extra words
+                corrected_label = original_text
+            else:
+                # Keep original for other cases
+                corrected_label = original_text
             
-            # Generate training entries for each word
-            for word_detail, corrected_text in word_mapping:
-                if word_detail and corrected_text:
-                    coordinates = word_detail['coordinates']
-                    original_text = word_detail['vietnamese_text']
-                    confidence = word_detail['confidence']
-                    
-                    training_entry = {
-                        'coordinates': coordinates,
-                        'original_ocr': original_text,
-                        'corrected_label': corrected_text,
-                        'confidence': confidence,
-                        'line_index': pair_index,
-                        'cluster_label': cluster_label,
-                        'similarity_score': similarity,
-                        'status': status
-                    }
-                    
-                    training_data.append(training_entry)
-        
-        elif status == 'EXTRA_OCR' and word_details:
-            # For extra OCR lines, keep original OCR as labels (no ground truth available)
-            for word_detail in word_details:
-                coordinates = word_detail['coordinates']
-                original_text = word_detail['vietnamese_text']
-                confidence = word_detail['confidence']
-                
-                training_entry = {
-                    'coordinates': coordinates,
-                    'original_ocr': original_text,
-                    'corrected_label': original_text,  # Keep original since no ground truth
-                    'confidence': confidence,
-                    'line_index': pair_index,
-                    'cluster_label': cluster_label,
-                    'similarity_score': 0.0,
-                    'status': status
-                }
-                
-                training_data.append(training_entry)
+            training_entry = {
+                'coordinates': coordinates,
+                'original_ocr': original_text,
+                'corrected_label': corrected_label,
+                'confidence': confidence,
+                'word_index': pair_index,
+                'cluster_label': cluster_label,
+                'similarity_score': similarity,
+                'status': status,
+                'alignment_type': alignment_type
+            }
+            
+            training_data.append(training_entry)
     
     return training_data
-
-def align_words_for_training(ocr_words, ref_words, word_details):
-    """
-    Align OCR words with reference words for training data generation.
-    Uses simple sequential alignment with best effort matching.
-    
-    Parameters:
-        ocr_words: List of normalized OCR words
-        ref_words: List of normalized reference words
-        word_details: List of word detail dictionaries with coordinates
-        
-    Returns:
-        list: List of (word_detail, corrected_text) tuples
-    """
-    word_mapping = []
-    
-    # Simple approach: try to align words sequentially
-    min_len = min(len(ocr_words), len(ref_words), len(word_details))
-    
-    # Align the overlapping portion
-    for i in range(min_len):
-        word_detail = word_details[i]
-        corrected_text = ref_words[i]
-        word_mapping.append((word_detail, corrected_text))
-    
-    # Handle remaining OCR words (if OCR has more words than reference)
-    if len(word_details) > min_len:
-        for i in range(min_len, len(word_details)):
-            word_detail = word_details[i]
-            # Use original OCR text if no corresponding reference word
-            original_normalized = normalize_vietnamese_text(word_detail['vietnamese_text'])
-            word_mapping.append((word_detail, original_normalized))
-    
-    return word_mapping
 
 def save_training_data(training_data, output_file='training_data.txt', format_type='paddleocr', actual_image_path=None):
     """
@@ -1036,23 +936,26 @@ def write_paddleocr_line(f, line_index, entries, actual_image_path=None):
 def save_simple_format(training_data, output_file):
     """Save in simple text format for easy inspection"""
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("TRAINING DATA FOR SEMI-SUPERVISED LEARNING\n")
+        f.write("WORD-LEVEL TRAINING DATA FOR SEMI-SUPERVISED LEARNING\n")
         f.write("=" * 60 + "\n\n")
         
-        current_line = None
+        current_cluster = None
         for entry in training_data:
-            line_index = entry['line_index']
+            cluster_label = entry['cluster_label']
             
-            if current_line != line_index:
-                f.write(f"\n=== Line {line_index} ===\n")
-                current_line = line_index
+            if current_cluster != cluster_label:
+                f.write(f"\n=== Cluster {cluster_label} ===\n")
+                current_cluster = cluster_label
             
             coords = entry['coordinates']
             original = entry['original_ocr']
             corrected = entry['corrected_label']
             confidence = entry['confidence']
             status = entry['status']
+            alignment_type = entry.get('alignment_type', 'UNKNOWN')
+            word_index = entry['word_index']
             
+            f.write(f"Word #{word_index}: {alignment_type} alignment\n")
             f.write(f"Coordinates: {coords}\n")
             f.write(f"Original OCR: '{original}'\n")
             f.write(f"Corrected Label: '{corrected}'\n")
@@ -1201,8 +1104,8 @@ def process_batch_alignment(images_folder, texts_folder, output_folder='batch_re
                              'paddleocr', image_path)
             
             # Save alignment results for reference
-            save_sentence_alignment_results(aligned_results, 
-                                          os.path.join(file_output_folder, f'{base_name}_alignment.txt'))
+            save_word_level_alignment_results(aligned_results, 
+                                             os.path.join(file_output_folder, f'{base_name}_alignment.txt'))
             
             # Update batch statistics
             batch_results['processed_files'] += 1
@@ -1279,439 +1182,487 @@ def save_batch_summary(batch_results, output_folder):
     except Exception as e:
         print(f"Error saving batch summary: {e}")
 
-def find_anchor_points(clustered_result, reference_texts, min_similarity=0.8, is_vietnamese=True):
+def word_level_anchor_guided_alignment(ocr_words_with_coords, reference_text, min_anchor_similarity=0.9, threshold=0.4, is_vietnamese=True, debug=False):
     """
-    Find high-confidence anchor points between OCR lines and reference texts.
-    These anchors will guide the overall alignment process.
+    Perform word-level alignment using dynamic programming approach similar to Levenshtein distance.
+    Minimizes edit operations (insert, delete, substitute) while using anchor points as low-cost alignments.
+    
+    Example:
+    OCR words: [A, B, C, D, E, F, G, H] 
+    Reference: [A, B, M, N, E, F, G, L]
+    
+    DP finds optimal path minimizing:
+    - Substitute C→M, D→N, H→L (cost based on similarity)  
+    - Keep A→A, B→B, E→E, F→F, G→G as low-cost anchors
     
     Parameters:
-        clustered_result: Dictionary of clustered OCR results
-        reference_texts: List of reference sentences
-        min_similarity: Minimum similarity threshold for anchor points
-        is_vietnamese: Whether to use Vietnamese normalization
-        
-    Returns:
-        list: List of anchor points as (ocr_index, ref_index, similarity) tuples
-    """
-    nom_dict = load_nom_dictionary()
-    sorted_clusters = sorted(clustered_result.keys())
-    anchor_points = []
-    
-    print(f"Finding anchor points with similarity >= {min_similarity}...")
-    
-    # Compare each OCR line with each reference text
-    for ocr_idx, cluster_label in enumerate(sorted_clusters):
-        cluster_lines = clustered_result[cluster_label]
-        ocr_sentence, _, _ = combine_cluster_to_sentence(cluster_lines, nom_dict)
-        
-        if not ocr_sentence.strip():
-            continue
-            
-        best_similarity = 0.0
-        best_ref_idx = -1
-        
-        for ref_idx, reference_text in enumerate(reference_texts):
-            if not reference_text.strip():
-                continue
-                
-            similarity, _, _ = word_level_similarity(ocr_sentence, reference_text, is_vietnamese)
-            
-            if similarity > best_similarity:
-                best_similarity = similarity
-                best_ref_idx = ref_idx
-        
-        # Add as anchor point if similarity is high enough
-        if best_similarity >= min_similarity and best_ref_idx >= 0:
-            anchor_points.append((ocr_idx, best_ref_idx, best_similarity))
-    
-    # Sort anchor points by OCR index to maintain order
-    anchor_points.sort(key=lambda x: x[0])
-    
-    print(f"Found {len(anchor_points)} anchor points:")
-    for ocr_idx, ref_idx, sim in anchor_points:
-        print(f"  OCR line {ocr_idx+1} ↔ Reference line {ref_idx+1} (similarity: {sim:.3f})")
-    
-    return anchor_points
-
-def anchor_guided_alignment(clustered_result, reference_texts, anchor_points, threshold=0.4, is_vietnamese=True, debug=False):
-    """
-    Perform alignment guided by anchor points. This creates segments between anchors
-    and aligns each segment independently.
-    
-    Parameters:
-        clustered_result: Dictionary of clustered OCR results
-        reference_texts: List of reference sentences
-        anchor_points: List of (ocr_index, ref_index, similarity) anchor tuples
+        ocr_words_with_coords: List of (word, word_detail) tuples from OCR
+        reference_text: Single text string containing all reference words
+        min_anchor_similarity: Minimum similarity for considering as anchor (low cost)
         threshold: Similarity threshold for reporting quality
         is_vietnamese: Whether to use Vietnamese normalization
         debug: Whether to show debug information
         
     Returns:
-        list: Aligned results with improved accuracy
+        list: Optimally aligned results minimizing edit distance
     """
-    nom_dict = load_nom_dictionary()
-    sorted_clusters = sorted(clustered_result.keys())
-    aligned_results = []
+    # Split reference text into words
+    reference_words = normalize_text(reference_text, is_vietnamese).split()
     
     if debug:
-        print(f"\n=== ANCHOR-GUIDED ALIGNMENT ===")
-        print(f"OCR lines: {len(sorted_clusters)}")
-        print(f"Reference lines: {len(reference_texts)}")
-        print(f"Anchor points: {len(anchor_points)}")
+        print(f"\n=== LEVENSHTEIN-STYLE WORD ALIGNMENT ===")
+        print(f"OCR words: {len(ocr_words_with_coords)}")
+        print(f"Reference words: {len(reference_words)}")
     
-    # If no anchor points, fall back to sequential alignment
-    if not anchor_points:
-        print("No anchor points found, falling back to sequential alignment...")
-        return find_sequential_sentence_alignment(clustered_result, reference_texts, threshold, is_vietnamese, debug)
-    
-    # Create segments between anchor points
-    segments = []
-    prev_ocr_idx = 0
-    prev_ref_idx = 0
-    
-    for ocr_idx, ref_idx, similarity in anchor_points:
-        # Add segment before this anchor (if any)
-        if ocr_idx > prev_ocr_idx or ref_idx > prev_ref_idx:
-            segments.append({
-                'ocr_start': prev_ocr_idx,
-                'ocr_end': ocr_idx,
-                'ref_start': prev_ref_idx,
-                'ref_end': ref_idx,
-                'type': 'segment'
-            })
-        
-        # Add the anchor point itself
-        segments.append({
-            'ocr_start': ocr_idx,
-            'ocr_end': ocr_idx + 1,
-            'ref_start': ref_idx,
-            'ref_end': ref_idx + 1,
-            'type': 'anchor',
-            'similarity': similarity
-        })
-        
-        prev_ocr_idx = ocr_idx + 1
-        prev_ref_idx = ref_idx + 1
-    
-    # Add final segment after last anchor (if any)
-    if prev_ocr_idx < len(sorted_clusters) or prev_ref_idx < len(reference_texts):
-        segments.append({
-            'ocr_start': prev_ocr_idx,
-            'ocr_end': len(sorted_clusters),
-            'ref_start': prev_ref_idx,
-            'ref_end': len(reference_texts),
-            'type': 'segment'
-        })
+    # Extract OCR words for easier processing
+    ocr_words = [normalize_text(word, is_vietnamese) for word, _ in ocr_words_with_coords]
     
     if debug:
-        print(f"Created {len(segments)} segments:")
-        for i, seg in enumerate(segments):
-            print(f"  Segment {i+1}: OCR[{seg['ocr_start']}:{seg['ocr_end']}] ↔ Ref[{seg['ref_start']}:{seg['ref_end']}] ({seg['type']})")
+        print(f"OCR sequence: {ocr_words[:10]}..." if len(ocr_words) > 10 else f"OCR sequence: {ocr_words}")
+        print(f"Ref sequence: {reference_words[:10]}..." if len(reference_words) > 10 else f"Ref sequence: {reference_words}")
     
-    # Align each segment
-    pair_index = 1
-    for segment in segments:
-        if segment['type'] == 'anchor':
-            # Direct alignment for anchor points
-            ocr_idx = segment['ocr_start']
-            ref_idx = segment['ref_start']
-            
-            cluster_label = sorted_clusters[ocr_idx]
-            cluster_lines = clustered_result[cluster_label]
-            ocr_sentence, word_details, coordinates_list = combine_cluster_to_sentence(cluster_lines, nom_dict)
-            reference_sentence = reference_texts[ref_idx]
-            similarity = segment['similarity']
-            
-            aligned_results.append({
-                'pair_index': pair_index,
-                'cluster_label': cluster_label,
-                'ocr_sentence': ocr_sentence,
-                'reference_sentence': reference_sentence,
-                'similarity': similarity,
-                'word_details': word_details,
-                'coordinates_list': coordinates_list,
-                'status': 'MATCHED',
-                'alignment_type': 'ANCHOR'
-            })
-            pair_index += 1
-            
-        else:
-            # Align segment using optimal strategy
-            segment_results = align_segment(
-                clustered_result, reference_texts, sorted_clusters, segment, 
-                nom_dict, threshold, is_vietnamese, pair_index, debug
-            )
-            aligned_results.extend(segment_results)
-            pair_index += len(segment_results)
+    # Perform DP alignment
+    alignment_path, total_cost = dp_word_alignment(
+        ocr_words, 
+        reference_words, 
+        min_anchor_similarity=min_anchor_similarity,
+        debug=debug
+    )
+    
+    if debug:
+        print(f"Optimal alignment found with total cost: {total_cost:.3f}")
+        print(f"Alignment path length: {len(alignment_path)}")
+    
+    # Convert alignment path to results
+    aligned_results = convert_alignment_path_to_results(
+        alignment_path, 
+        ocr_words_with_coords, 
+        reference_words, 
+        threshold,
+        is_vietnamese,
+        debug
+    )
     
     if debug:
         matched_count = sum(1 for r in aligned_results if r['status'] == 'MATCHED')
-        anchor_count = sum(1 for r in aligned_results if r.get('alignment_type') == 'ANCHOR')
-        print(f"\n=== ANCHOR-GUIDED ALIGNMENT SUMMARY ===")
-        print(f"Total pairs: {len(aligned_results)}")
+        anchor_count = sum(1 for r in aligned_results if r.get('is_anchor', False))
+        print(f"\n=== DP ALIGNMENT SUMMARY ===")
+        print(f"Total operations: {len(aligned_results)}")
         print(f"Anchor alignments: {anchor_count}")
         print(f"High similarity matches: {matched_count}")
-        print(f"Success rate: {matched_count/len(aligned_results)*100:.1f}%")
+        print(f"Edit distance cost: {total_cost:.3f}")
     
     return aligned_results
 
-def align_segment(clustered_result, reference_texts, sorted_clusters, segment, nom_dict, threshold, is_vietnamese, start_pair_index, debug=False):
+def dp_word_alignment(ocr_words, reference_words, min_anchor_similarity=0.9, debug=False):
     """
-    Align a segment between anchor points using the best strategy based on segment size.
+    Dynamic programming word alignment minimizing edit distance with anchor point bonuses.
     
     Parameters:
-        clustered_result: Dictionary of clustered OCR results
-        reference_texts: List of reference sentences
-        sorted_clusters: Sorted cluster labels
-        segment: Segment dictionary with start/end indices
-        nom_dict: Vietnamese dictionary
-        threshold: Similarity threshold
-        is_vietnamese: Whether to use Vietnamese normalization
-        start_pair_index: Starting pair index for numbering
+        ocr_words: List of normalized OCR words
+        reference_words: List of normalized reference words  
+        min_anchor_similarity: Threshold for anchor point detection
         debug: Whether to show debug information
         
     Returns:
-        list: Aligned results for this segment
+        tuple: (alignment_path, total_cost)
+            alignment_path: List of (operation, ocr_idx, ref_idx, cost) tuples
+            total_cost: Total alignment cost
     """
-    ocr_start, ocr_end = segment['ocr_start'], segment['ocr_end']
-    ref_start, ref_end = segment['ref_start'], segment['ref_end']
+    m, n = len(ocr_words), len(reference_words)
     
-    ocr_count = ocr_end - ocr_start
-    ref_count = ref_end - ref_start
+    # Define operation costs
+    INSERT_COST = 1.0      # Cost to insert a reference word (missing OCR)
+    DELETE_COST = 1.0      # Cost to delete an OCR word (extra OCR)
+    ANCHOR_COST = 0.1      # Very low cost for anchor matches
     
-    if debug:
-        print(f"Aligning segment: {ocr_count} OCR lines vs {ref_count} reference lines")
-    
-    segment_results = []
-    
-    if ocr_count == 0 and ref_count == 0:
-        # Empty segment, nothing to align
-        return segment_results
-    
-    elif ocr_count == 0:
-        # Missing OCR lines
-        for i in range(ref_count):
-            ref_idx = ref_start + i
-            segment_results.append({
-                'pair_index': start_pair_index + i,
-                'cluster_label': f'missing_{ref_idx}',
-                'ocr_sentence': '',
-                'reference_sentence': reference_texts[ref_idx],
-                'similarity': 0.0,
-                'word_details': [],
-                'coordinates_list': [],
-                'status': 'MISSING_OCR',
-                'alignment_type': 'SEGMENT'
-            })
-    
-    elif ref_count == 0:
-        # Extra OCR lines
-        for i in range(ocr_count):
-            ocr_idx = ocr_start + i
-            cluster_label = sorted_clusters[ocr_idx]
-            cluster_lines = clustered_result[cluster_label]
-            ocr_sentence, word_details, coordinates_list = combine_cluster_to_sentence(cluster_lines, nom_dict)
+    def substitution_cost(ocr_word, ref_word):
+        """Calculate substitution cost based on word similarity"""
+        if not ocr_word or not ref_word:
+            return 1.0
             
-            segment_results.append({
-                'pair_index': start_pair_index + i,
-                'cluster_label': cluster_label,
-                'ocr_sentence': ocr_sentence,
-                'reference_sentence': '',
-                'similarity': 0.0,
-                'word_details': word_details,
-                'coordinates_list': coordinates_list,
-                'status': 'EXTRA_OCR',
-                'alignment_type': 'SEGMENT'
-            })
-    
-    elif ocr_count == ref_count:
-        # Equal counts - use sequential alignment
-        for i in range(ocr_count):
-            ocr_idx = ocr_start + i
-            ref_idx = ref_start + i
+        if ocr_word == ref_word:
+            return ANCHOR_COST  # Exact match = anchor
             
-            cluster_label = sorted_clusters[ocr_idx]
-            cluster_lines = clustered_result[cluster_label]
-            ocr_sentence, word_details, coordinates_list = combine_cluster_to_sentence(cluster_lines, nom_dict)
-            reference_sentence = reference_texts[ref_idx]
+        # Calculate similarity
+        max_len = max(len(ocr_word), len(ref_word))
+        if max_len == 0:
+            return ANCHOR_COST
             
-            similarity, _, _ = word_level_similarity(ocr_sentence, reference_sentence, is_vietnamese)
-            status = 'MATCHED' if similarity >= threshold else 'LOW_SIMILARITY'
-            
-            segment_results.append({
-                'pair_index': start_pair_index + i,
-                'cluster_label': cluster_label,
-                'ocr_sentence': ocr_sentence,
-                'reference_sentence': reference_sentence,
-                'similarity': similarity,
-                'word_details': word_details,
-                'coordinates_list': coordinates_list,
-                'status': status,
-                'alignment_type': 'SEGMENT'
-            })
-    
-    else:
-        # Different counts - use optimal alignment within segment
-        segment_results = optimal_segment_alignment(
-            clustered_result, reference_texts, sorted_clusters, segment, 
-            nom_dict, threshold, is_vietnamese, start_pair_index, debug
-        )
-    
-    return segment_results
-
-def optimal_segment_alignment(clustered_result, reference_texts, sorted_clusters, segment, nom_dict, threshold, is_vietnamese, start_pair_index, debug=False):
-    """
-    Perform optimal alignment within a segment using dynamic programming approach.
-    This handles cases where OCR and reference counts don't match.
-    
-    Parameters:
-        clustered_result: Dictionary of clustered OCR results
-        reference_texts: List of reference sentences
-        sorted_clusters: Sorted cluster labels
-        segment: Segment dictionary with start/end indices
-        nom_dict: Vietnamese dictionary
-        threshold: Similarity threshold
-        is_vietnamese: Whether to use Vietnamese normalization
-        start_pair_index: Starting pair index for numbering
-        debug: Whether to show debug information
+        edit_dist = levenshtein_distance(ocr_word, ref_word)
+        similarity = 1 - (edit_dist / max_len)
         
-    Returns:
-        list: Optimally aligned results for this segment
-    """
-    ocr_start, ocr_end = segment['ocr_start'], segment['ocr_end']
-    ref_start, ref_end = segment['ref_start'], segment['ref_end']
-    
-    ocr_indices = list(range(ocr_start, ocr_end))
-    ref_indices = list(range(ref_start, ref_end))
-    
-    if debug:
-        print(f"Optimal alignment: {len(ocr_indices)} OCR vs {len(ref_indices)} ref")
-    
-    # Get OCR sentences
-    ocr_sentences = []
-    ocr_details = []
-    for ocr_idx in ocr_indices:
-        cluster_label = sorted_clusters[ocr_idx]
-        cluster_lines = clustered_result[cluster_label]
-        ocr_sentence, word_details, coordinates_list = combine_cluster_to_sentence(cluster_lines, nom_dict)
-        ocr_sentences.append(ocr_sentence)
-        ocr_details.append((cluster_label, word_details, coordinates_list))
-    
-    # Calculate similarity matrix
-    similarity_matrix = []
-    for ocr_sentence in ocr_sentences:
-        row = []
-        for ref_idx in ref_indices:
-            reference_sentence = reference_texts[ref_idx]
-            similarity, _, _ = word_level_similarity(ocr_sentence, reference_sentence, is_vietnamese)
-            row.append(similarity)
-        similarity_matrix.append(row)
-    
-    # Find optimal alignment using greedy approach (can be improved with DP)
-    alignments = greedy_alignment(similarity_matrix, threshold)
-    
-    # Create results
-    segment_results = []
-    pair_index = start_pair_index
-    
-    for ocr_local_idx, ref_local_idx, similarity in alignments:
-        if ocr_local_idx >= 0 and ref_local_idx >= 0:
-            # Both OCR and reference exist
-            ocr_idx = ocr_indices[ocr_local_idx]
-            ref_idx = ref_indices[ref_local_idx]
-            
-            cluster_label, word_details, coordinates_list = ocr_details[ocr_local_idx]
-            ocr_sentence = ocr_sentences[ocr_local_idx]
-            reference_sentence = reference_texts[ref_idx]
-            status = 'MATCHED' if similarity >= threshold else 'LOW_SIMILARITY'
-            
-        elif ocr_local_idx >= 0:
-            # Extra OCR
-            ocr_idx = ocr_indices[ocr_local_idx]
-            cluster_label, word_details, coordinates_list = ocr_details[ocr_local_idx]
-            ocr_sentence = ocr_sentences[ocr_local_idx]
-            reference_sentence = ''
-            similarity = 0.0
-            status = 'EXTRA_OCR'
-            
+        if similarity >= min_anchor_similarity:
+            return ANCHOR_COST  # High similarity = anchor
         else:
-            # Missing OCR
-            ref_idx = ref_indices[ref_local_idx]
-            cluster_label = f'missing_{ref_idx}'
-            word_details = []
-            coordinates_list = []
-            ocr_sentence = ''
-            reference_sentence = reference_texts[ref_idx]
-            similarity = 0.0
-            status = 'MISSING_OCR'
-        
-        segment_results.append({
-            'pair_index': pair_index,
-            'cluster_label': cluster_label,
-            'ocr_sentence': ocr_sentence,
-            'reference_sentence': reference_sentence,
-            'similarity': similarity,
-            'word_details': word_details,
-            'coordinates_list': coordinates_list,
-            'status': status,
-            'alignment_type': 'OPTIMAL'
-        })
-        pair_index += 1
+            return 1.0 - similarity  # Cost inversely proportional to similarity
     
-    return segment_results
+    # Initialize DP table
+    dp = [[float('inf')] * (n + 1) for _ in range(m + 1)]
+    parent = [[None] * (n + 1) for _ in range(m + 1)]
+    
+    # Base cases
+    dp[0][0] = 0
+    
+    # Initialize first row (all insertions)
+    for j in range(1, n + 1):
+        dp[0][j] = dp[0][j-1] + INSERT_COST
+        parent[0][j] = ('INSERT', 0, j-1)
+    
+    # Initialize first column (all deletions)  
+    for i in range(1, m + 1):
+        dp[i][0] = dp[i-1][0] + DELETE_COST
+        parent[i][0] = ('DELETE', i-1, 0)
+    
+    # Fill DP table
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            ocr_word = ocr_words[i-1]
+            ref_word = reference_words[j-1]
+            
+            # Option 1: Substitute (or match)
+            sub_cost = substitution_cost(ocr_word, ref_word)
+            if dp[i-1][j-1] + sub_cost < dp[i][j]:
+                dp[i][j] = dp[i-1][j-1] + sub_cost
+                parent[i][j] = ('SUBSTITUTE', i-1, j-1)
+            
+            # Option 2: Delete OCR word
+            if dp[i-1][j] + DELETE_COST < dp[i][j]:
+                dp[i][j] = dp[i-1][j] + DELETE_COST
+                parent[i][j] = ('DELETE', i-1, j)
+            
+            # Option 3: Insert reference word
+            if dp[i][j-1] + INSERT_COST < dp[i][j]:
+                dp[i][j] = dp[i][j-1] + INSERT_COST
+                parent[i][j] = ('INSERT', i, j-1)
+    
+    # Backtrack to find optimal path
+    alignment_path = []
+    i, j = m, n
+    total_cost = dp[m][n]
+    
+    while i > 0 or j > 0:
+        if parent[i][j] is None:
+            break
+            
+        operation, prev_i, prev_j = parent[i][j]
+        
+        if operation == 'SUBSTITUTE':
+            ocr_word = ocr_words[i-1]
+            ref_word = reference_words[j-1]
+            cost = substitution_cost(ocr_word, ref_word)
+            alignment_path.append((operation, i-1, j-1, cost))
+            i, j = prev_i, prev_j
+            
+        elif operation == 'DELETE':
+            alignment_path.append((operation, i-1, -1, DELETE_COST))
+            i = prev_i
+            
+        elif operation == 'INSERT':
+            alignment_path.append((operation, -1, j-1, INSERT_COST))
+            j = prev_j
+    
+    # Reverse to get forward order
+    alignment_path.reverse()
+    
+    if debug:
+        print(f"\nDP alignment path:")
+        for i, (op, ocr_idx, ref_idx, cost) in enumerate(alignment_path[:10]):  # Show first 10
+            if op == 'SUBSTITUTE':
+                ocr_w = ocr_words[ocr_idx] if ocr_idx >= 0 else "?"
+                ref_w = reference_words[ref_idx] if ref_idx >= 0 else "?"
+                anchor_marker = "🔗" if cost <= ANCHOR_COST + 0.01 else ""
+                print(f"  {i+1}: {op} '{ocr_w}' → '{ref_w}' (cost: {cost:.2f}) {anchor_marker}")
+            elif op == 'DELETE':
+                ocr_w = ocr_words[ocr_idx] if ocr_idx >= 0 else "?"
+                print(f"  {i+1}: {op} '{ocr_w}' (cost: {cost:.2f})")
+            elif op == 'INSERT':
+                ref_w = reference_words[ref_idx] if ref_idx >= 0 else "?"
+                print(f"  {i+1}: {op} → '{ref_w}' (cost: {cost:.2f})")
+        
+        if len(alignment_path) > 10:
+            print(f"  ... and {len(alignment_path) - 10} more operations")
+    
+    return alignment_path, total_cost
 
-def greedy_alignment(similarity_matrix, threshold=0.3):
+def convert_alignment_path_to_results(alignment_path, ocr_words_with_coords, reference_words, threshold, is_vietnamese, debug=False):
     """
-    Perform greedy alignment based on similarity matrix.
+    Convert DP alignment path to structured results format.
     
     Parameters:
-        similarity_matrix: 2D list of similarities [ocr_count][ref_count]
-        threshold: Minimum similarity for considering a match
+        alignment_path: List of (operation, ocr_idx, ref_idx, cost) tuples
+        ocr_words_with_coords: Original OCR words with coordinates
+        reference_words: Reference word list
+        threshold: Similarity threshold for status classification
+        is_vietnamese: Whether using Vietnamese normalization
+        debug: Whether to show debug information
         
     Returns:
-        list: List of (ocr_idx, ref_idx, similarity) tuples, with -1 for unmatched
+        list: Structured alignment results
     """
-    if not similarity_matrix or not similarity_matrix[0]:
-        return []
+    aligned_results = []
+    ANCHOR_COST_THRESHOLD = 0.15  # Threshold to consider as anchor
     
-    ocr_count = len(similarity_matrix)
-    ref_count = len(similarity_matrix[0])
+    for pair_index, (operation, ocr_idx, ref_idx, cost) in enumerate(alignment_path, 1):
+        
+        if operation == 'SUBSTITUTE':
+            # Both OCR and reference word exist
+            word, word_detail = ocr_words_with_coords[ocr_idx]
+            reference_word = reference_words[ref_idx]
+            
+            # Calculate actual similarity for status
+            similarity, _, _ = word_level_similarity(word, reference_word, is_vietnamese)
+            
+            # Determine if this is an anchor point
+            is_anchor = cost <= ANCHOR_COST_THRESHOLD
+            
+            # Determine status
+            if is_anchor:
+                status = 'MATCHED'
+                alignment_type = 'ANCHOR'
+            elif similarity >= threshold:
+                status = 'MATCHED' 
+                alignment_type = 'SUBSTITUTE'
+            else:
+                status = 'LOW_SIMILARITY'
+                alignment_type = 'SUBSTITUTE'
+            
+            aligned_results.append({
+                'pair_index': pair_index,
+                'cluster_label': word_detail['cluster_label'],
+                'ocr_word': word,
+                'reference_word': reference_word,
+                'similarity': similarity,
+                'word_detail': word_detail,
+                'status': status,
+                'alignment_type': alignment_type,
+                'operation': operation,
+                'edit_cost': cost,
+                'is_anchor': is_anchor
+            })
+            
+        elif operation == 'DELETE':
+            # Extra OCR word (no reference match)
+            word, word_detail = ocr_words_with_coords[ocr_idx]
+            
+            aligned_results.append({
+                'pair_index': pair_index,
+                'cluster_label': word_detail['cluster_label'],
+                'ocr_word': word,
+                'reference_word': '',
+                'similarity': 0.0,
+                'word_detail': word_detail,
+                'status': 'EXTRA_OCR',
+                'alignment_type': 'DELETE',
+                'operation': operation,
+                'edit_cost': cost,
+                'is_anchor': False
+            })
+            
+        elif operation == 'INSERT':
+            # Missing OCR word (reference exists but no OCR)
+            reference_word = reference_words[ref_idx]
+            
+            aligned_results.append({
+                'pair_index': pair_index,
+                'cluster_label': f'missing_{ref_idx}',
+                'ocr_word': '',
+                'reference_word': reference_word,
+                'similarity': 0.0,
+                'word_detail': None,
+                'status': 'MISSING_OCR',
+                'alignment_type': 'INSERT',
+                'operation': operation,
+                'edit_cost': cost,
+                'is_anchor': False
+            })
     
-    # Find all potential matches above threshold
-    potential_matches = []
-    for i in range(ocr_count):
-        for j in range(ref_count):
-            if similarity_matrix[i][j] >= threshold:
-                potential_matches.append((i, j, similarity_matrix[i][j]))
+    if debug:
+        print(f"\nConverted {len(alignment_path)} operations to {len(aligned_results)} results")
+        
+        # Show operation breakdown
+        ops_count = {}
+        for result in aligned_results:
+            op = result['operation']
+            ops_count[op] = ops_count.get(op, 0) + 1
+        
+        print(f"Operation breakdown: {ops_count}")
     
-    # Sort by similarity (descending)
-    potential_matches.sort(key=lambda x: x[2], reverse=True)
+    return aligned_results
+
+def visualize_word_level_alignment(image, aligned_results, output_path='word_level_alignment_visualization.jpg'):
+    """
+    Visualize word-level alignment results with color coding for anchors and segments.
+    """
+    # Convert OpenCV image to PIL Image (RGB)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    pil_image = Image.fromarray(image_rgb)
+    draw = ImageDraw.Draw(pil_image)
     
-    # Greedy selection
-    used_ocr = set()
-    used_ref = set()
-    alignments = []
+    # Setup font
+    font = setup_font(12)
     
-    for ocr_idx, ref_idx, similarity in potential_matches:
-        if ocr_idx not in used_ocr and ref_idx not in used_ref:
-            alignments.append((ocr_idx, ref_idx, similarity))
-            used_ocr.add(ocr_idx)
-            used_ref.add(ref_idx)
+    for result in aligned_results:
+        pair_index = result['pair_index']
+        word_detail = result.get('word_detail')
+        alignment_type = result.get('alignment_type', 'UNKNOWN')
+        status = result['status']
+        similarity = result['similarity']
+        ocr_word = result.get('ocr_word', '')
+        reference_word = result.get('reference_word', '')
+        
+        # Skip if no word detail (missing OCR)
+        if not word_detail:
+            continue
+        
+        coordinates = word_detail['coordinates']
+        
+        # Color coding based on alignment type and status
+        if alignment_type == 'ANCHOR':
+            box_color = (0, 255, 0)  # Bright green for anchors
+            text_color = (0, 200, 0)
+            label_prefix = "🔗 ANCHOR"
+        elif status == 'MATCHED':
+            box_color = (0, 150, 255)  # Blue for good matches
+            text_color = (0, 100, 200)
+            label_prefix = "✅ MATCH"
+        elif status == 'LOW_SIMILARITY':
+            box_color = (255, 165, 0)  # Orange for low similarity
+            text_color = (200, 100, 0)
+            label_prefix = "⚠️ LOW"
+        elif status == 'EXTRA_OCR':
+            box_color = (255, 255, 0)  # Yellow for extra OCR
+            text_color = (200, 200, 0)
+            label_prefix = "➕ EXTRA"
+        else:
+            box_color = (128, 128, 128)  # Gray for others
+            text_color = (100, 100, 100)
+            label_prefix = "❓"
+        
+        # Convert coordinates to box format if needed
+        if len(coordinates) == 4 and not isinstance(coordinates[0], (int, float)):
+            x_coords = [point[0] for point in coordinates]
+            y_coords = [point[1] for point in coordinates]
+            box = np.array([[min(x_coords), min(y_coords)], [max(x_coords), min(y_coords)], 
+                           [max(x_coords), max(y_coords)], [min(x_coords), max(y_coords)]])
+        else:
+            x_min, y_min, x_max, y_max = coordinates
+            box = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]])
+        
+        # Draw bounding box with thicker line for anchors
+        line_width = 3 if alignment_type == 'ANCHOR' else 2
+        points = [(point[0], point[1]) for point in box]
+        draw.line(points + [points[0]], fill=box_color, width=line_width)
+        
+        # Create label
+        if reference_word:
+            label = f"{label_prefix}: '{ocr_word}' → '{reference_word}'"
+            if alignment_type != 'ANCHOR':
+                label += f" [{similarity:.2f}]"
+        else:
+            label = f"{label_prefix}: '{ocr_word}'"
+        
+        # Position label above the word
+        label_pos = (int(box[0][0]), int(box[0][1] - 35))
+        
+        # Draw label background and text
+        try:
+            text_bbox = draw.textbbox((0, 0), label, font=font)
+            text_width, text_height = text_bbox[2], text_bbox[3]
+            
+            # White background for readability
+            draw.rectangle(
+                [label_pos[0], label_pos[1], label_pos[0] + text_width + 6, label_pos[1] + text_height + 4],
+                fill=(255, 255, 255, 220)
+            )
+            
+            # Draw text
+            draw.text((label_pos[0] + 3, label_pos[1]), label, fill=text_color, font=font)
+            
+        except Exception as e:
+            # Fallback for text drawing issues
+            print(f"Warning: Could not draw label for word {pair_index}: {e}")
     
-    # Add unmatched OCR lines
-    for i in range(ocr_count):
-        if i not in used_ocr:
-            alignments.append((i, -1, 0.0))
+    # Create output directory if needed
+    output_dir = os.path.dirname(output_path)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     
-    # Add unmatched reference lines
-    for j in range(ref_count):
-        if j not in used_ref:
-            alignments.append((-1, j, 0.0))
+    # Save visualization
+    pil_image.save(output_path)
+    print(f"Word-level alignment visualization saved to {output_path}")
+
+def save_word_level_alignment_results(aligned_results, output_file='word_level_alignment_results.txt'):
+    """
+    Save word-level alignment results to a text file.
     
-    # Sort by OCR index for consistent ordering
-    alignments.sort(key=lambda x: (x[0] if x[0] >= 0 else float('inf'), x[1] if x[1] >= 0 else float('inf')))
-    
-    return alignments
+    Parameters:
+        aligned_results: List of word-level alignment results
+        output_file: Output file path
+    """
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("VIETNAMESE WORD-LEVEL ALIGNMENT RESULTS\n")
+            f.write("=" * 60 + "\n\n")
+            
+            anchor_count = sum(1 for result in aligned_results if result.get('alignment_type') == 'ANCHOR')
+            matched_count = sum(1 for result in aligned_results if result['status'] == 'MATCHED')
+            
+            f.write(f"SUMMARY:\n")
+            f.write(f"  Total words: {len(aligned_results)}\n")
+            f.write(f"  Anchor points: {anchor_count}\n")
+            f.write(f"  High similarity matches: {matched_count}\n")
+            f.write(f"  Success rate: {matched_count/len(aligned_results)*100:.1f}%\n\n")
+            
+            f.write("WORD-BY-WORD ALIGNMENT:\n")
+            f.write("-" * 50 + "\n\n")
+            
+            current_cluster = None
+            for result in aligned_results:
+                word_index = result['pair_index']
+                cluster_label = result['cluster_label']
+                ocr_word = result.get('ocr_word', '')
+                reference_word = result.get('reference_word', '')
+                similarity = result['similarity']
+                word_detail = result.get('word_detail')
+                status = result['status']
+                alignment_type = result.get('alignment_type', 'UNKNOWN')
+                
+                # Show cluster changes
+                if current_cluster != cluster_label:
+                    f.write(f"\n--- Cluster {cluster_label} ---\n")
+                    current_cluster = cluster_label
+                
+                f.write(f"\nWord #{word_index} ({alignment_type}):\n")
+                
+                if status == 'MATCHED':
+                    if alignment_type == 'ANCHOR':
+                        f.write(f"  🔗 ANCHOR: '{ocr_word}' ↔ '{reference_word}' [exact match]\n")
+                    else:
+                        f.write(f"  ✓ MATCHED: '{ocr_word}' ↔ '{reference_word}' [similarity: {similarity:.3f}]\n")
+                elif status == 'LOW_SIMILARITY':
+                    f.write(f"  ⚠️ LOW SIMILARITY: '{ocr_word}' ↔ '{reference_word}' [similarity: {similarity:.3f}]\n")
+                elif status == 'EXTRA_OCR':
+                    f.write(f"  ➕ EXTRA OCR: '{ocr_word}' [no reference match]\n")
+                elif status == 'MISSING_OCR':
+                    f.write(f"  ❌ MISSING OCR: expected '{reference_word}'\n")
+                
+                if word_detail:
+                    coords = word_detail['coordinates']
+                    confidence = word_detail['confidence']
+                    f.write(f"    Coordinates: {coords}\n")
+                    f.write(f"    Confidence: {confidence:.3f}\n")
+                
+                # Show correction if applied
+                if ocr_word and reference_word and ocr_word != reference_word:
+                    f.write(f"    *** CORRECTION: '{ocr_word}' → '{reference_word}' ***\n")
+            
+            f.write("\n" + "=" * 60 + "\n")
+        
+        print(f"Word-level alignment results saved to {output_file}")
+        
+    except Exception as e:
+        print(f"Error saving word-level alignment results: {e}")
 
 if __name__ == "__main__":
     main()
