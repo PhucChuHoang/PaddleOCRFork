@@ -633,6 +633,45 @@ def find_sequential_sentence_alignment(clustered_result, reference_texts, thresh
     
     return aligned_results
 
+def extract_all_words_with_coordinates(clustered_result, nom_dict):
+    """
+    Extract all words from clustered OCR results in reading order with their coordinates.
+    
+    Parameters:
+        clustered_result: Dictionary of clustered OCR results
+        nom_dict: Vietnamese dictionary for text conversion
+        
+    Returns:
+        list: List of (word, word_detail) tuples in reading order
+    """
+    all_words_with_coords = []
+    
+    # Process clusters in order (columns/rows)
+    sorted_clusters = sorted(clustered_result.keys())
+    
+    for cluster_label in sorted_clusters:
+        cluster_lines = clustered_result[cluster_label]
+        
+        # Process words within each cluster
+        for line in cluster_lines:
+            coordinates = line[0]
+            text, confidence = line[1]
+            
+            # Convert to Vietnamese text
+            vietnamese_text = get_vietnamese_text(text, nom_dict)
+            
+            word_detail = {
+                'coordinates': coordinates,
+                'original_text': text,
+                'vietnamese_text': vietnamese_text,
+                'confidence': confidence,
+                'cluster_label': cluster_label
+            }
+            
+            all_words_with_coords.append((vietnamese_text, word_detail))
+    
+    return all_words_with_coords
+
 def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0.5, is_vertical=True, visualize=True, debug=False, use_anchors=True):
     """
     Main function with word-level anchor-based alignment as requested by user.
