@@ -3,6 +3,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import glob
 from pathlib import Path
+from typing import List, Dict
 
 def setup_font(font_size=16):
     """Setup font for text rendering with fallback options."""
@@ -61,7 +62,7 @@ def load_alignment_results(alignment_file: str):
         print(f"Error loading {alignment_file}: {e}")
         return []
 
-def parse_coordinates(coordinates: str|list):
+def parse_coordinates(coordinates: str|List):
     """Parse coordinate data and convert to usable format."""
     try:
         # Handle different coordinate formats
@@ -113,7 +114,7 @@ def get_status_color(status: str, similarity=0.0):
     else:  # MISSING_OCR, BOTH_MISSING, or no match
         return (255, 0, 0), (200, 0, 0)  # Red
 
-def visualize_alignment_on_image(image_path: str, alignment_data: list[dict], output_path: str):
+def visualize_alignment_on_image(image_path: str, alignment_data: List[Dict], output_path: str):
     """Visualize alignment results on the original image."""
     try:
         # Load image
