@@ -76,6 +76,7 @@ def crop_chars_from_image(image_path: str, alignment_data: List[Dict], output_fo
         pil_image = Image.fromarray(image_rgb)
         
         os.makedirs(output_folder, exist_ok=True)
+        count = 0
 
         # Process each aligned result
         with open(os.path.join(output_folder, LABEL_FILE), 'w', encoding='utf-8') as f:
@@ -128,7 +129,7 @@ def update_dict_file(folder_path: str):
             lines = f.read().splitlines()
             labels = [line.split('\t')[1] for line in lines if '\t' in line]
             labels = [unicodedata.normalize('NFC', label) for label in labels]
-            labels = set(labels)  # Unique labels
+            labels = set(labels)
             unique_chars |= labels
     
     with open(DICT_PATH, 'r', encoding='utf-8') as f:
@@ -198,9 +199,9 @@ def find_alignment_files(aligned_data_folder: str):
 
 def main():
     # Configuration
-    images_folder = 'test_img'  # Original images folder
-    aligned_data_folder = 'aligned_data'  # Aligned data folder
-    output_folder = 'cropped_images'  # Output folder for cropped images
+    images_folder = 'thang_1_img'  # Original images folder
+    aligned_data_folder = 'thang_1_aligned'  # Aligned data folder
+    output_folder = 'thang_1_cropped'  # Output folder for cropped images
     
     # Check if folders exist
     if not os.path.exists(images_folder):

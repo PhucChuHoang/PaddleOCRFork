@@ -4,17 +4,16 @@ import numpy as np
 import os
 from PIL import Image, ImageDraw, ImageFont
 from sklearn.cluster import DBSCAN
-from collections import defaultdict
 from sortedcontainers import SortedDict
 import re
 import glob
 from pathlib import Path
 
 # Configuration constants
-DET_MODEL_DIR = './inference/det/PP-OCRv5_server_det_infer'
-REC_MODEL_DIR = './inference/customized/svtr_base'
-REC_CHAR_DICT_PATH = './ppocr/utils/dict/casia_hwdb_dict.txt'
-NOM_DICT_PATH = 'ppocr/utils/dict/nom_dict.txt'
+DET_MODEL_DIR = 'D:/University/Thesis/PaddleOCRFork/exported_det'
+REC_MODEL_DIR = 'D:/University/Thesis/PaddleOCRFork/exported_rec'
+REC_CHAR_DICT_PATH = 'D:/University/Thesis/PaddleOCRFork/ppocr/utils/dict/casia_hwdb_dict.txt'
+NOM_DICT_PATH = 'D:/University/Thesis/PaddleOCRFork/new_dict.txt'
 
 def initialize_ocr():
     """Initialize and return PaddleOCR instance with predefined configuration."""
@@ -345,9 +344,9 @@ def normalize_text(text, is_vietnamese=True):
 def main():
     """Main execution function - runs batch processing automatically."""
     # Default settings for batch processing
-    images_folder = 'thang10/images'  # Default images folder
-    texts_folder = 'thang10/labels'  # Default text files folder
-    output_folder = 'aligned_data'  # Default output folder
+    images_folder = 'fix_img'  # Default images folder
+    texts_folder = 'fix_txt'  # Default text files folder
+    output_folder = 'fix_aligned'  # Default output folder
     threshold = 0  # Default similarity threshold
     is_vertical = True  # Default text orientation (vertical)
     debug = False  # Disable debug mode for automatic processing
