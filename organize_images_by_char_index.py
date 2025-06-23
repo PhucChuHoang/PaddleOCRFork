@@ -71,7 +71,7 @@ def main():
     print(f"Loaded {len(char_to_index)} unique characters")
     
     # Set up paths
-    input_base_dir = os.path.join('Thien-chua-thanh-giao-hoi-toi-kinh', 'cropped')
+    input_base_dir = os.path.join('thang_12', 'cropped')
     output_base_dir = 'organized_by_char_index'
     
     # Create output directory

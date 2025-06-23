@@ -344,9 +344,9 @@ def normalize_text(text, is_vietnamese=True):
 def main():
     """Main execution function - runs batch processing automatically."""
     # Default settings for batch processing
-    images_folder = 'Thien-chua-thanh-giao-hoi-toi-kinh/image'  # Default images folder
-    texts_folder = 'Thien-chua-thanh-giao-hoi-toi-kinh/text'  # Default text files folder
-    output_folder = 'Thien-chua-thanh-giao-hoi-toi-kinh/aligned'  # Default output folder
+    images_folder = 'thang_12/thang_12'  # Default images folder
+    texts_folder = 'thang_12/thang_12_txt'  # Default text files folder
+    output_folder = 'thang_12/aligned'  # Default output folder
     threshold = 0  # Default similarity threshold
     is_vertical = True  # Default text orientation (vertical)
     debug = False  # Disable debug mode for automatic processing

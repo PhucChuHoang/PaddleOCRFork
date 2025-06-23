@@ -7,8 +7,9 @@ import ast
 from typing import List, Dict
 import unicodedata
 
-DICT_PATH = 'new_dict.txt'
+DICT_PATH = 'nom_dict.txt'
 LABEL_FILE = 'labels.txt'
+UNIQUE_CHARS_FILE = 'unique_chars.txt'
 
 def load_alignment_results(alignment_file: str):
     """Load alignment results from a PaddleOCR format file."""
@@ -132,6 +133,10 @@ def update_dict_file(folder_path: str):
             labels = set(labels)
             unique_chars |= labels
     
+    with open(UNIQUE_CHARS_FILE, 'w', encoding='utf-8') as f:
+        for char in unique_chars:
+            f.write(char + '\n')
+
     with open(DICT_PATH, 'r', encoding='utf-8') as f:
         char_dict = f.read().splitlines()
         char_dict = [unicodedata.normalize('NFC', char) for char in char_dict]
@@ -199,9 +204,9 @@ def find_alignment_files(aligned_data_folder: str):
 
 def main():
     # Configuration
-    images_folder = 'thang_1_img'  # Original images folder
-    aligned_data_folder = 'thang_1_aligned'  # Aligned data folder
-    output_folder = 'thang_1_cropped'  # Output folder for cropped images
+    images_folder = 'thang_12/thang_12'  # Original images folder
+    aligned_data_folder = 'thang_12/aligned'  # Aligned data folder
+    output_folder = 'thang_12/cropped'  # Output folder for cropped images
     
     # Check if folders exist
     if not os.path.exists(images_folder):
@@ -258,7 +263,7 @@ def main():
     # Update the dictionary file with unique characters
     update_dict_file(output_folder)
     # Remap labels in the cropped images
-    remap_labels(output_folder)
+    # remap_labels(output_folder)
     
     print(f"Cropped images saved in: {output_folder}")
 
