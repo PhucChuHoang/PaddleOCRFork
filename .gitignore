@@ -32,3 +32,10 @@ paddleocr.egg-info/
 /deploy/android_demo/app/cache/
 test_tipc/web/models/
 test_tipc/web/node_modules/
+
+thang1/
+organized_by_char_index/
+pretrain_models/
+test_images/
+Thien-chua-thanh-giao-hoi-toi-kinh/
+thang_12/
