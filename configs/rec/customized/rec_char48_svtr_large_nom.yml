@@ -60,7 +60,7 @@ Loss:
 
 PostProcess:  
   name: CTCLabelDecodeTopK
-  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  character_dict_path: ppocr/utils/dict/new_nom_dict.txt
   use_space_char: false
   k: 5
 
