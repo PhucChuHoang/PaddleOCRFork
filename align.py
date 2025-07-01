@@ -11,8 +11,11 @@ from pathlib import Path
 
 # Configuration constants
 DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
+# REC_MODEL_DIR = 'inference/customized/svtr_large/27062025/nom'
 REC_MODEL_DIR = 'inference/customized/svtr_base'
+# REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/casia_hwdb_dict.txt'
+# NOM_DICT_PATH = 'combined_unique_chars.txt'
 NOM_DICT_PATH = 'nom_dict.txt'
 
 def initialize_ocr():
@@ -344,9 +347,9 @@ def normalize_text(text, is_vietnamese=True):
 def main():
     """Main execution function - runs batch processing automatically."""
     # Default settings for batch processing
-    images_folder = 'thang_12/thang_12'  # Default images folder
-    texts_folder = 'thang_12/thang_12_txt'  # Default text files folder
-    output_folder = 'thang_12/aligned'  # Default output folder
+    images_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/img'  # Default images folder
+    texts_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/txt'  # Default text files folder
+    output_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/aligned'  # Default output folder
     threshold = 0  # Default similarity threshold
     is_vertical = True  # Default text orientation (vertical)
     debug = False  # Disable debug mode for automatic processing

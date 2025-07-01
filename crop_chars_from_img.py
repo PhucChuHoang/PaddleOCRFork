@@ -7,9 +7,10 @@ import ast
 from typing import List, Dict
 import unicodedata
 
-DICT_PATH = 'nom_dict.txt'
+DICT_PATH = 'combined_unique_chars.txt'
 LABEL_FILE = 'labels.txt'
 UNIQUE_CHARS_FILE = 'unique_chars.txt'
+NEW_WORDS_FILE = 'new_words.txt'
 
 def load_alignment_results(alignment_file: str):
     """Load alignment results from a PaddleOCR format file."""
@@ -144,6 +145,10 @@ def update_dict_file(folder_path: str):
     
     unique_chars -= existing_chars  # Remove already existing characters
     
+    with open(NEW_WORDS_FILE, 'w', encoding='utf-8') as f:
+        for char in unique_chars:
+            f.write(char + '\n')
+    
     # Append unique characters to the dictionary file
     with open(DICT_PATH, 'a', encoding='utf-8') as f:
         for char in unique_chars:
@@ -204,9 +209,9 @@ def find_alignment_files(aligned_data_folder: str):
 
 def main():
     # Configuration
-    images_folder = 'thang_12/thang_12'  # Original images folder
-    aligned_data_folder = 'thang_12/aligned'  # Aligned data folder
-    output_folder = 'thang_12/cropped'  # Output folder for cropped images
+    images_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/img'  # Original images folder
+    aligned_data_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/aligned'  # Aligned data folder
+    output_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/cropped'  # Output folder for cropped images
     
     # Check if folders exist
     if not os.path.exists(images_folder):
