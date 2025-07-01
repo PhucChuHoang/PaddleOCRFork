@@ -3,13 +3,12 @@
 OCR Accuracy Evaluation Script
 Based on word-level anchor-based alignment from align.py
 
-This script evaluates OCR model accuracy using various metrics:
-- Word-level accuracy (exact matches)
-- Character-level accuracy 
-- Edit distance metrics
-- Anchor point accuracy
+This script evaluates OCR model accuracy using standard metrics:
+- Top-1 Word Accuracy (exact matches)
+- Character Accuracy 
+- CER (Character Error Rate)
+- WER (Word Error Rate)
 - Confidence-based analysis
-- Per-class character accuracy
 
 Usage:
     python evaluate_ocr_accuracy.py --images_folder path/to/images --texts_folder path/to/ground_truth --output_folder path/to/results
@@ -18,25 +17,22 @@ Usage:
 import os
 import sys
 import argparse
-import json
 import numpy as np
-from collections import defaultdict, Counter
+from collections import defaultdict
 from pathlib import Path
+import editdistance
+import difflib
 
 # Import functions from align.py
 from align import (
     process_sequential_sentence_alignment,
     find_matching_files,
     load_ground_truth_file,
-    word_level_similarity,
-    levenshtein_distance,
-    normalize_text,
-    load_nom_dictionary,
-    get_vietnamese_text
+    load_nom_dictionary
 )
 
 class OCRAccuracyEvaluator:
-    """Comprehensive OCR accuracy evaluation system."""
+    """OCR accuracy evaluation system with standard metrics."""
     
     def __init__(self, is_vietnamese=True, min_anchor_similarity=0.9, similarity_threshold=0.6):
         """
@@ -59,13 +55,7 @@ class OCRAccuracyEvaluator:
         """Reset all accumulated metrics."""
         self.word_metrics = {
             'total_words': 0,
-            'exact_matches': 0,
-            'anchor_matches': 0,
-            'high_similarity_matches': 0,
-            'low_similarity_matches': 0,
-            'extra_ocr_words': 0,
-            'missing_ocr_words': 0,
-            'total_similarity_score': 0.0
+            'correct_words': 0,  # Exact matches only
         }
         
         self.character_metrics = {
@@ -74,17 +64,19 @@ class OCRAccuracyEvaluator:
             'total_edit_distance': 0
         }
         
+        self.edit_operations = {
+            'substitutions': 0,
+            'insertions': 0,
+            'deletions': 0
+        }
+        
         self.confidence_metrics = {
             'high_confidence_correct': 0,
             'high_confidence_total': 0,
             'low_confidence_correct': 0,
             'low_confidence_total': 0,
-            'confidence_scores': [],
-            'accuracy_scores': []
         }
         
-        self.per_character_accuracy = defaultdict(lambda: {'correct': 0, 'total': 0})
-        self.alignment_costs = []
         self.file_results = []
     
     def evaluate_single_file(self, image_path, text_path, debug=False):
@@ -147,13 +139,7 @@ class OCRAccuracyEvaluator:
         # Initialize file-level counters
         file_word_metrics = {
             'total_words': 0,
-            'exact_matches': 0,
-            'anchor_matches': 0,
-            'high_similarity_matches': 0,
-            'low_similarity_matches': 0,
-            'extra_ocr_words': 0,
-            'missing_ocr_words': 0,
-            'total_similarity_score': 0.0
+            'correct_words': 0,
         }
         
         file_char_metrics = {
@@ -170,65 +156,41 @@ class OCRAccuracyEvaluator:
             
             ocr_word = result.get('ocr_word', '')
             reference_word = result.get('reference_word', '')
-            similarity = result['similarity']
-            status = result['status']
-            alignment_type = result.get('alignment_type', 'UNKNOWN')
             word_detail = result.get('word_detail')
             
-            # Word-level metrics
-            file_word_metrics['total_similarity_score'] += similarity
-            
-            if status == 'MATCHED':
-                if alignment_type == 'ANCHOR':
-                    file_word_metrics['anchor_matches'] += 1
-                    file_word_metrics['exact_matches'] += 1
-                elif similarity >= self.similarity_threshold:
-                    file_word_metrics['high_similarity_matches'] += 1
-                else:
-                    file_word_metrics['low_similarity_matches'] += 1
-            elif status == 'LOW_SIMILARITY':
-                file_word_metrics['low_similarity_matches'] += 1
-            elif status == 'EXTRA_OCR':
-                file_word_metrics['extra_ocr_words'] += 1
-            elif status == 'MISSING_OCR':
-                file_word_metrics['missing_ocr_words'] += 1
+            # Exact match only for word accuracy
+            is_correct = (ocr_word == reference_word)
+            if is_correct:
+                file_word_metrics['correct_words'] += 1
             
             # Character-level metrics
             if ocr_word and reference_word:
-                char_edit_dist = levenshtein_distance(ocr_word, reference_word)
+                edit_distance = get_edit_distance(reference_word, ocr_word)
                 max_len = max(len(ocr_word), len(reference_word))
                 
-                file_char_metrics['total_edit_distance'] += char_edit_dist
+                file_char_metrics['total_edit_distance'] += edit_distance
                 file_char_metrics['total_characters'] += max_len
-                file_char_metrics['correct_characters'] += max_len - char_edit_dist
+                file_char_metrics['correct_characters'] += max_len - edit_distance
             
             # Confidence analysis
             if word_detail:
                 confidence = word_detail['confidence']
-                is_correct = (alignment_type == 'ANCHOR' or 
-                            (status == 'MATCHED' and similarity >= self.similarity_threshold))
                 confidence_data.append((confidence, is_correct))
         
         # Calculate file-level accuracy rates
-        total_processable = (file_word_metrics['exact_matches'] + 
-                           file_word_metrics['high_similarity_matches'] + 
-                           file_word_metrics['low_similarity_matches'] + 
-                           file_word_metrics['extra_ocr_words'])
-        
         file_accuracy_metrics = {
-            'word_accuracy': (file_word_metrics['exact_matches'] + file_word_metrics['high_similarity_matches']) / max(total_processable, 1) * 100,
-            'anchor_accuracy': file_word_metrics['anchor_matches'] / max(total_processable, 1) * 100,
+            'top1_word_accuracy': file_word_metrics['correct_words'] / max(file_word_metrics['total_words'], 1) * 100,
             'character_accuracy': file_char_metrics['correct_characters'] / max(file_char_metrics['total_characters'], 1) * 100,
-            'average_similarity': file_word_metrics['total_similarity_score'] / max(file_word_metrics['total_words'], 1),
-            'edit_distance_ratio': file_char_metrics['total_edit_distance'] / max(file_char_metrics['total_characters'], 1)
+            'cer': file_char_metrics['total_edit_distance'] / max(file_char_metrics['total_characters'], 1),
+            'wer': 1 - (file_word_metrics['correct_words'] / max(file_word_metrics['total_words'], 1))
         }
         
         if debug:
             print(f"\nFile Metrics for {file_name}:")
-            print(f"  Word Accuracy: {file_accuracy_metrics['word_accuracy']:.2f}%")
-            print(f"  Anchor Accuracy: {file_accuracy_metrics['anchor_accuracy']:.2f}%")
+            print(f"  Top-1 Word Accuracy: {file_accuracy_metrics['top1_word_accuracy']:.2f}%")
             print(f"  Character Accuracy: {file_accuracy_metrics['character_accuracy']:.2f}%")
-            print(f"  Average Similarity: {file_accuracy_metrics['average_similarity']:.3f}")
+            print(f"  CER: {file_accuracy_metrics['cer']:.3f}")
+            print(f"  WER: {file_accuracy_metrics['wer']:.3f}")
             print(f"  Total Words: {file_word_metrics['total_words']}")
         
         return {
@@ -247,48 +209,31 @@ class OCRAccuracyEvaluator:
             
             ocr_word = result.get('ocr_word', '')
             reference_word = result.get('reference_word', '')
-            similarity = result['similarity']
-            status = result['status']
-            alignment_type = result.get('alignment_type', 'UNKNOWN')
             word_detail = result.get('word_detail')
-            edit_cost = result.get('edit_cost', 0)
             
-            # Word-level metrics
-            self.word_metrics['total_similarity_score'] += similarity
-            self.alignment_costs.append(edit_cost)
+            # Exact match only for word accuracy
+            is_correct = (ocr_word == reference_word)
+            if is_correct:
+                self.word_metrics['correct_words'] += 1
             
-            if status == 'MATCHED':
-                if alignment_type == 'ANCHOR':
-                    self.word_metrics['anchor_matches'] += 1
-                    self.word_metrics['exact_matches'] += 1
-                elif similarity >= self.similarity_threshold:
-                    self.word_metrics['high_similarity_matches'] += 1
-                else:
-                    self.word_metrics['low_similarity_matches'] += 1
-            elif status == 'LOW_SIMILARITY':
-                self.word_metrics['low_similarity_matches'] += 1
-            elif status == 'EXTRA_OCR':
-                self.word_metrics['extra_ocr_words'] += 1
-            elif status == 'MISSING_OCR':
-                self.word_metrics['missing_ocr_words'] += 1
-            
-            # Character-level metrics
+            # Character-level metrics and edit operations
             if ocr_word and reference_word:
-                char_edit_dist = levenshtein_distance(ocr_word, reference_word)
+                subs, ins, dels = get_edit_operations(reference_word, ocr_word)
+                total_ops = subs + ins + dels
                 max_len = max(len(ocr_word), len(reference_word))
                 
-                self.character_metrics['total_edit_distance'] += char_edit_dist
+                self.character_metrics['total_edit_distance'] += total_ops
                 self.character_metrics['total_characters'] += max_len
-                self.character_metrics['correct_characters'] += max_len - char_edit_dist
+                self.character_metrics['correct_characters'] += max_len - total_ops
+                
+                # Track edit operations
+                self.edit_operations['substitutions'] += subs
+                self.edit_operations['insertions'] += ins
+                self.edit_operations['deletions'] += dels
             
             # Confidence analysis
             if word_detail:
                 confidence = word_detail['confidence']
-                is_correct = (alignment_type == 'ANCHOR' or 
-                            (status == 'MATCHED' and similarity >= self.similarity_threshold))
-                
-                self.confidence_metrics['confidence_scores'].append(confidence)
-                self.confidence_metrics['accuracy_scores'].append(1.0 if is_correct else 0.0)
                 
                 # High vs low confidence analysis
                 if confidence >= 0.8:  # High confidence threshold
@@ -301,21 +246,18 @@ class OCRAccuracyEvaluator:
                         self.confidence_metrics['low_confidence_correct'] += 1
     
     def calculate_overall_accuracy(self):
-        """Calculate overall accuracy metrics."""
+        """Calculate overall accuracy metrics using standard terminology."""
         
-        total_processable = (self.word_metrics['exact_matches'] + 
-                           self.word_metrics['high_similarity_matches'] + 
-                           self.word_metrics['low_similarity_matches'] + 
-                           self.word_metrics['extra_ocr_words'])
+        top1_word_accuracy = self.word_metrics['correct_words'] / max(self.word_metrics['total_words'], 1) * 100
+        character_accuracy = self.character_metrics['correct_characters'] / max(self.character_metrics['total_characters'], 1) * 100
+        cer = self.character_metrics['total_edit_distance'] / max(self.character_metrics['total_characters'], 1)
+        wer = 1 - (top1_word_accuracy / 100)
         
         overall_metrics = {
-            'word_accuracy': (self.word_metrics['exact_matches'] + self.word_metrics['high_similarity_matches']) / max(total_processable, 1) * 100,
-            'exact_word_accuracy': self.word_metrics['exact_matches'] / max(total_processable, 1) * 100,
-            'anchor_accuracy': self.word_metrics['anchor_matches'] / max(total_processable, 1) * 100,
-            'character_accuracy': self.character_metrics['correct_characters'] / max(self.character_metrics['total_characters'], 1) * 100,
-            'average_similarity': self.word_metrics['total_similarity_score'] / max(self.word_metrics['total_words'], 1),
-            'edit_distance_ratio': self.character_metrics['total_edit_distance'] / max(self.character_metrics['total_characters'], 1),
-            'average_alignment_cost': np.mean(self.alignment_costs) if self.alignment_costs else 0,
+            'top1_word_accuracy': top1_word_accuracy,
+            'character_accuracy': character_accuracy,
+            'cer': cer,  # Character Error Rate
+            'wer': wer,  # Word Error Rate
         }
         
         # Confidence-based metrics
@@ -329,11 +271,11 @@ class OCRAccuracyEvaluator:
         else:
             overall_metrics['low_confidence_accuracy'] = 0
         
-        # Error rate metrics
-        overall_metrics['error_rate'] = 100 - overall_metrics['word_accuracy']
-        overall_metrics['substitution_rate'] = self.word_metrics['low_similarity_matches'] / max(total_processable, 1) * 100
-        overall_metrics['insertion_rate'] = self.word_metrics['extra_ocr_words'] / max(total_processable, 1) * 100
-        overall_metrics['deletion_rate'] = self.word_metrics['missing_ocr_words'] / max(self.word_metrics['total_words'], 1) * 100
+        # Edit operation rates
+        total_words = max(self.word_metrics['total_words'], 1)
+        overall_metrics['substitution_rate'] = self.edit_operations['substitutions'] / total_words
+        overall_metrics['insertion_rate'] = self.edit_operations['insertions'] / total_words
+        overall_metrics['deletion_rate'] = self.edit_operations['deletions'] / total_words
         
         return overall_metrics
     
@@ -351,10 +293,11 @@ class OCRAccuracyEvaluator:
         print(f"\n{'='*60}")
         print(f"EVALUATION REPORT GENERATED")
         print(f"{'='*60}")
-        print(f"Word Accuracy: {overall_metrics['word_accuracy']:.2f}%")
+        print(f"Top-1 Word Accuracy: {overall_metrics['top1_word_accuracy']:.2f}%")
         print(f"Character Accuracy: {overall_metrics['character_accuracy']:.2f}%")
-        print(f"Anchor Point Accuracy: {overall_metrics['anchor_accuracy']:.2f}%")
-        print(f"Average Similarity: {overall_metrics['average_similarity']:.3f}")
+        print(f"CER (Character Error Rate): {overall_metrics['cer']:.3f} ({overall_metrics['cer']*100:.1f}%)")
+        print(f"WER (Word Error Rate): {overall_metrics['wer']:.3f} ({overall_metrics['wer']*100:.1f}%)")
+        print(f"Edit Rates - Sub: {overall_metrics['substitution_rate']:.3f}, Ins: {overall_metrics['insertion_rate']:.3f}, Del: {overall_metrics['deletion_rate']:.3f}")
         print(f"Total Files Processed: {len(self.file_results)}")
         print(f"Total Words Evaluated: {self.word_metrics['total_words']}")
         print(f"\nDetailed report saved in: {output_folder}")
@@ -362,45 +305,43 @@ class OCRAccuracyEvaluator:
     def generate_text_report(self, overall_metrics, output_folder):
         """Generate detailed text report."""
         
-        report_path = os.path.join(output_folder, 'ocr_accuracy_report_old_model.txt')
+        report_path = os.path.join(output_folder, 'ocr_accuracy_report.txt')
         
         with open(report_path, 'w', encoding='utf-8') as f:
             f.write("OCR ACCURACY EVALUATION REPORT\n")
             f.write("=" * 60 + "\n\n")
             
-            f.write("OVERALL ACCURACY METRICS:\n")
-            f.write("-" * 30 + "\n")
-            f.write(f"Word Accuracy: {overall_metrics['word_accuracy']:.2f}%\n")
-            f.write(f"Exact Word Accuracy: {overall_metrics['exact_word_accuracy']:.2f}%\n")
-            f.write(f"Anchor Point Accuracy: {overall_metrics['anchor_accuracy']:.2f}%\n")
+            f.write("MAIN METRICS:\n")
+            f.write("-" * 20 + "\n")
+            f.write(f"Top-1 Word Accuracy: {overall_metrics['top1_word_accuracy']:.2f}%\n")
             f.write(f"Character Accuracy: {overall_metrics['character_accuracy']:.2f}%\n")
-            f.write(f"Average Word Similarity: {overall_metrics['average_similarity']:.3f}\n")
-            f.write(f"Edit Distance Ratio: {overall_metrics['edit_distance_ratio']:.3f}\n")
-            f.write(f"Average Alignment Cost: {overall_metrics['average_alignment_cost']:.3f}\n\n")
+            f.write(f"CER (Character Error Rate): {overall_metrics['cer']:.3f} ({overall_metrics['cer']*100:.1f}%)\n")
+            f.write(f"WER (Word Error Rate): {overall_metrics['wer']:.3f} ({overall_metrics['wer']*100:.1f}%)\n\n")
             
-            f.write("ERROR ANALYSIS:\n")
-            f.write("-" * 30 + "\n")
-            f.write(f"Overall Error Rate: {overall_metrics['error_rate']:.2f}%\n")
-            f.write(f"Substitution Error Rate: {overall_metrics['substitution_rate']:.2f}%\n")
-            f.write(f"Insertion Error Rate: {overall_metrics['insertion_rate']:.2f}%\n")
-            f.write(f"Deletion Error Rate: {overall_metrics['deletion_rate']:.2f}%\n\n")
+            f.write("EDIT OPERATION RATES:\n")
+            f.write("-" * 25 + "\n")
+            f.write(f"Substitution Rate: {overall_metrics['substitution_rate']:.3f} ({overall_metrics['substitution_rate']*100:.1f}%)\n")
+            f.write(f"Insertion Rate: {overall_metrics['insertion_rate']:.3f} ({overall_metrics['insertion_rate']*100:.1f}%)\n")
+            f.write(f"Deletion Rate: {overall_metrics['deletion_rate']:.3f} ({overall_metrics['deletion_rate']*100:.1f}%)\n\n")
+            
+            f.write("EDIT OPERATION COUNTS:\n")
+            f.write("-" * 25 + "\n")
+            f.write(f"Substitutions: {self.edit_operations['substitutions']}\n")
+            f.write(f"Insertions: {self.edit_operations['insertions']}\n")
+            f.write(f"Deletions: {self.edit_operations['deletions']}\n")
+            f.write(f"Total Edit Operations: {sum(self.edit_operations.values())}\n\n")
             
             f.write("CONFIDENCE ANALYSIS:\n")
-            f.write("-" * 30 + "\n")
+            f.write("-" * 25 + "\n")
             f.write(f"High Confidence Accuracy: {overall_metrics['high_confidence_accuracy']:.2f}%\n")
             f.write(f"Low Confidence Accuracy: {overall_metrics['low_confidence_accuracy']:.2f}%\n")
             f.write(f"High Confidence Samples: {self.confidence_metrics['high_confidence_total']}\n")
             f.write(f"Low Confidence Samples: {self.confidence_metrics['low_confidence_total']}\n\n")
             
             f.write("WORD-LEVEL STATISTICS:\n")
-            f.write("-" * 30 + "\n")
+            f.write("-" * 25 + "\n")
             f.write(f"Total Words Processed: {self.word_metrics['total_words']}\n")
-            f.write(f"Exact Matches: {self.word_metrics['exact_matches']}\n")
-            f.write(f"Anchor Matches: {self.word_metrics['anchor_matches']}\n")
-            f.write(f"High Similarity Matches: {self.word_metrics['high_similarity_matches']}\n")
-            f.write(f"Low Similarity Matches: {self.word_metrics['low_similarity_matches']}\n")
-            f.write(f"Extra OCR Words: {self.word_metrics['extra_ocr_words']}\n")
-            f.write(f"Missing OCR Words: {self.word_metrics['missing_ocr_words']}\n\n")
+            f.write(f"Correct Words (Exact Matches): {self.word_metrics['correct_words']}\n\n")
             
             f.write("CHARACTER-LEVEL STATISTICS:\n")
             f.write("-" * 30 + "\n")
@@ -409,12 +350,13 @@ class OCRAccuracyEvaluator:
             f.write(f"Total Edit Distance: {self.character_metrics['total_edit_distance']}\n\n")
             
             f.write("PER-FILE RESULTS:\n")
-            f.write("-" * 30 + "\n")
+            f.write("-" * 20 + "\n")
             for file_result in self.file_results:
                 f.write(f"\nFile: {file_result['file_name']}\n")
-                f.write(f"  Word Accuracy: {file_result['accuracy_metrics']['word_accuracy']:.2f}%\n")
+                f.write(f"  Top-1 Word Accuracy: {file_result['accuracy_metrics']['top1_word_accuracy']:.2f}%\n")
                 f.write(f"  Character Accuracy: {file_result['accuracy_metrics']['character_accuracy']:.2f}%\n")
-                f.write(f"  Average Similarity: {file_result['accuracy_metrics']['average_similarity']:.3f}\n")
+                f.write(f"  CER: {file_result['accuracy_metrics']['cer']:.3f}\n")
+                f.write(f"  WER: {file_result['accuracy_metrics']['wer']:.3f}\n")
                 f.write(f"  Total Words: {file_result['word_metrics']['total_words']}\n")
         
         print(f"Text report saved to {report_path}")
@@ -477,9 +419,9 @@ def evaluate_batch_accuracy(images_folder, texts_folder, output_folder,
         
         if file_result:
             successful_evaluations += 1
-            word_acc = file_result['accuracy_metrics']['word_accuracy']
+            top1_acc = file_result['accuracy_metrics']['top1_word_accuracy']
             char_acc = file_result['accuracy_metrics']['character_accuracy']
-            print(f"✅ {base_name}: Word {word_acc:.1f}%, Char {char_acc:.1f}%")
+            print(f"✅ {base_name}: Top1 {top1_acc:.1f}%, Char {char_acc:.1f}%")
         else:
             failed_evaluations += 1
             print(f"❌ {base_name}: Evaluation failed")
@@ -551,6 +493,40 @@ def main():
         print(f"\n❌ Evaluation failed!")
         return 1
 
+
+def get_edit_distance(ref_word, ocr_word):
+    """
+    Get edit distance between two words.
+    
+    Parameters:
+        ref_word: Reference (ground truth) word
+        ocr_word: OCR predicted word
+        
+    Returns:
+        int: Edit distance
+    """
+    return editdistance.eval(ref_word, ocr_word)
+
+
+def get_edit_operations(ref_word, ocr_word):
+    """
+    Get the breakdown of edit operations (substitutions, insertions, deletions).
+    
+    Parameters:
+        ref_word: Reference (ground truth) word
+        ocr_word: OCR predicted word
+        
+    Returns:
+        tuple: (substitutions, insertions, deletions)
+    """
+    # Use difflib.SequenceMatcher to get operation codes
+    matcher = difflib.SequenceMatcher(None, ref_word, ocr_word)
+    operations = matcher.get_opcodes()
+    
+    subs = sum(1 for op in operations if op[0] == 'replace')
+    ins = sum(1 for op in operations if op[0] == 'insert') 
+    dels = sum(1 for op in operations if op[0] == 'delete')
+    return subs, ins, dels
 
 if __name__ == "__main__":
     sys.exit(main()) 
