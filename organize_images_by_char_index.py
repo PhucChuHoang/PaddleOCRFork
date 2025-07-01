@@ -4,7 +4,7 @@ from pathlib import Path
 
 def load_unique_chars():
     """Load the unique characters from unique_chars.txt and create an index mapping"""
-    with open('unique_chars.txt', 'r', encoding='utf-8') as f:
+    with open('combined_unique_chars.txt', 'r', encoding='utf-8') as f:
         chars = [line.strip() for line in f.readlines()]
     
     # Create a mapping from character to index
@@ -71,8 +71,8 @@ def main():
     print(f"Loaded {len(char_to_index)} unique characters")
     
     # Set up paths
-    input_base_dir = os.path.join('thang_12', 'cropped')
-    output_base_dir = 'organized_by_char_index'
+    input_base_dir = os.path.join('E:/Courses/Thesis/FinalizedData/CAC_THANH_TRUYEN_THANG_05', 'cropped')
+    output_base_dir = 'E:/Courses/Thesis/FinalizedData/CAC_THANH_TRUYEN_THANG_05/organized_by_char_index'
     
     # Create output directory
     os.makedirs(output_base_dir, exist_ok=True)
