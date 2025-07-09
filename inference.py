@@ -224,24 +224,5 @@ result = ocr.ocr(img, det=True, cls=False)
 # Print results
 print(f"Found {len(result[0])} text regions")
 
-# Load dictionary for printing results
-try:
-    with open('combined_unique_chars.txt', 'r', encoding='utf-8') as f:
-        nom_dict = f.read().splitlines()
-    
-    for idx, line in enumerate(result[0]):
-        text, confidence = line[1][0], line[1][1]
-        try:
-            char_index = char2code(text)
-            if 0 <= char_index < len(nom_dict):
-                viet_text = nom_dict[char_index]
-            else:
-                viet_text = f"[Unknown: {text}]"
-        except Exception as e:
-            viet_text = f"[Error: {text}]"
-        print(f"Text {idx+1}: {viet_text}, Confidence: {confidence:.4f}")
-except FileNotFoundError:
-    print("Error: combined_unique_chars.txt not found for printing results!")
-
 # Visualize and save results
 visualize_results(img, result[0], output_path='output/visualized_vietnamese.png')
