@@ -1,19 +1,20 @@
 Global:
   use_gpu: true
-  epoch_num: 100
+  epoch_num: &epoch_num 50
   log_smooth_window: 20
   print_batch_step: 10
-  save_model_dir: ./output/27-09-2024/Resnet50/
+  save_model_dir: /kaggle/working/rec
   save_epoch_step: 20
   # evaluation is run every 2000 iterations
   eval_batch_step: [0,2000]
   cal_metric_during_train: False
-  pretrained_model: ./pretrain_models/ResNet50_vd_ssld_pretrained
-  checkpoints:
+  # pretrained_model: /kaggle/temp/weights/latest
+  # checkpoints: /kaggle/temp/weights/latest
   save_inference_dir:
   use_visualdl: False
   infer_img: doc/imgs_en/img_10.jpg
   save_res_path: ./output/det_db/predicts_db.txt
+  distributed: true
 
 Architecture:
   model_type: det
@@ -61,9 +62,9 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/
+    data_dir: /kaggle/temp/extracted_data
     label_file_list:
-      - ./train_data/train_label.txt
+      - ./train_labels/detection_train.txt
     ratio_list: [1.0]
     transforms:
       - DecodeImage: # load image
@@ -83,9 +84,11 @@ Train:
           shrink_ratio: 0.4
           thresh_min: 0.3
           thresh_max: 0.7
+          total_epoch: *epoch_num
       - MakeShrinkMap:
           shrink_ratio: 0.4
           min_text_size: 8
+          total_epoch: *epoch_num
       - NormalizeImage:
           scale: 1./255.
           mean: [0.485, 0.456, 0.406]
@@ -103,16 +106,17 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/
+    data_dir: /kaggle/temp/extracted_data
     label_file_list:
-      - ./train_data/test_label.txt
+      - ./train_labels/detection_test.txt
     transforms:
       - DecodeImage: # load image
           img_mode: BGR
           channel_first: False
       - DetLabelEncode: # Class handling label
       - DetResizeForTest:
-          image_shape: [736, 1280]
+          limit_side_len: 896
+          limit_type: max
       - NormalizeImage:
           scale: 1./255.
           mean: [0.485, 0.456, 0.406]
