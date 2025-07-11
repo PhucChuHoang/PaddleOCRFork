@@ -5,7 +5,7 @@ Global:
   print_batch_step: 10
   save_model_dir: /kaggle/working/rec
   save_epoch_step: 20
-  eval_batch_step: [0, 2000]
+  eval_batch_step: [0, 15000]
   cal_metric_during_train: False
   # pretrained_model: ./pretrain_models/ResNet18_vd_pretrained
   # checkpoints: /kaggle/temp/weights/latest
