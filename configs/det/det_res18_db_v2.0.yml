@@ -9,6 +9,7 @@ Global:
   cal_metric_during_train: False
   # pretrained_model: ./pretrain_models/ResNet18_vd_pretrained
   # checkpoints: /kaggle/temp/weights/latest
+  checkpoints: output/det/resnet18/iter_epoch_50
   save_inference_dir:
   use_visualdl: False
   infer_img: doc/imgs_en/img_10.jpg
@@ -108,9 +109,11 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: /kaggle/temp/extracted_data
+    # data_dir: /kaggle/temp/extracted_data
+    data_dir: C:\Users\ADMIN\Downloads\M5HisDoc\M5HisDoc
     label_file_list:
-      - ./train_labels/detection_test.txt
+      # - ./train_labels/detection_test.txt
+      - C:/Users/ADMIN/Downloads/M5HisDoc/M5HisDoc/val_labels.txt
     transforms:
       - DecodeImage: # load image
           img_mode: BGR
