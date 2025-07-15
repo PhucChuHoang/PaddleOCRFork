@@ -22,112 +22,12 @@ def char2code(ch):
     return pos
 
 def load_vietnamese_font(font_size=20):
-    """Load a font that supports Vietnamese characters with diacritical marks"""
-    
-    # Test string with Vietnamese characters including diacritics
-    vietnamese_test = "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ"
-    
-    # Vietnamese-compatible fonts to try (in order of preference)
-    vietnamese_fonts = [
-        # Common Vietnamese fonts (Windows)
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/calibri.ttf",
-        "C:/Windows/Fonts/times.ttf",
-        "C:/Windows/Fonts/tahoma.ttf",
-        "C:/Windows/Fonts/verdana.ttf",
-        "C:/Windows/Fonts/segoeui.ttf",
-        "C:/Windows/Fonts/cambria.ttc",
-        # Vietnamese specific fonts
-        "C:/Windows/Fonts/UVNBachLong_R.TTF",
-        "C:/Windows/Fonts/UVNBayBuomHep_R.TTF",
-        "C:/Windows/Fonts/VNI-Times.TTF",
-        # Google Fonts that support Vietnamese
-        "arial.ttf",
-        "calibri.ttf", 
-        "times.ttf",
-        "tahoma.ttf",
-        "verdana.ttf",
-        "segoeui.ttf",
-        # Linux Vietnamese fonts
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/lato/Lato-Regular.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-        # macOS Vietnamese fonts
-        "/System/Library/Fonts/Arial.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/Times.ttc",
-        # Project fonts
-        os.path.join("doc", "fonts", "simfang.ttf"),
-        os.path.join("doc", "fonts", "chinese_cht.ttf"),
-    ]
-    
-    def test_vietnamese_support(font):
-        """Test if font properly supports Vietnamese characters"""
-        try:
-            # Try to create a test image with Vietnamese text
-            test_img = Image.new('RGB', (100, 50), 'white')
-            test_draw = ImageDraw.Draw(test_img)
-            test_draw.text((10, 10), vietnamese_test[:10], font=font, fill='black')
-            return True
-        except Exception:
-            return False
-    
-    print("Attempting to load Vietnamese-compatible font...")
-    
-    # Try specific font paths first
-    for font_path in vietnamese_fonts:
-        try:
-            if os.path.exists(font_path) or not font_path.startswith(('/', 'C:')):
-                font = ImageFont.truetype(font_path, font_size)
-                if test_vietnamese_support(font):
-                    print(f"Successfully loaded Vietnamese font: {font_path}")
-                    return font
-                else:
-                    print(f"Font {font_path} loaded but may not fully support Vietnamese diacritics")
-                    return font  # Still use it as it's better than default
-        except Exception as e:
-            continue
-    
-    # Try common system font names without paths
-    font_names = [
-        "arial", "Arial", "ARIAL",
-        "calibri", "Calibri", "CALIBRI", 
-        "times", "Times", "Times New Roman",
-        "tahoma", "Tahoma", "TAHOMA",
-        "verdana", "Verdana", "VERDANA",
-        "segoeui", "Segoe UI",
-        "helvetica", "Helvetica",
-        "noto", "Noto Sans"
-    ]
-    
-    for font_name in font_names:
-        try:
-            font = ImageFont.truetype(font_name, font_size)
-            if test_vietnamese_support(font):
-                print(f"Successfully loaded Vietnamese system font: {font_name}")
-                return font
-            else:
-                print(f"System font {font_name} loaded but may not fully support Vietnamese diacritics")
-                return font  # Still use it as it's better than default
-        except Exception:
-            continue
-    
-    # Final fallback - download suggestion
-    print("=" * 60)
-    print("WARNING: No Vietnamese-compatible fonts found!")
-    print("For better Vietnamese text display, please:")
-    print("1. Install Google Fonts that support Vietnamese:")
-    print("   - Noto Sans Vietnamese")
-    print("   - Roboto")
-    print("   - Open Sans")
-    print("2. Or download Vietnamese fonts like:")
-    print("   - VNI-Times")
-    print("   - UVN fonts")
-    print("3. Place them in your system fonts directory")
-    print("=" * 60)
-    
-    return ImageFont.load_default()
+    try:
+        font = ImageFont.truetype("arial", font_size)
+        return font
+    except Exception:
+        print("Arial font not found, using default font")
+        return ImageFont.load_default()
 
 def visualize_results(image, result, output_path='visualized_output.jpg'):
     # Load the Vietnamese dictionary
@@ -214,7 +114,7 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
     print(f"Visualization saved to {output_path}")
 
 # Process the image
-img_path = 'test_images/page_10.png'
+img_path = 'test_images/page_12.png'
 img = cv2.imread(img_path)
 result = ocr.ocr(img, det=True, cls=False)
 
