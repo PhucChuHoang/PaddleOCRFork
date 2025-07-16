@@ -5,14 +5,14 @@ Global:
   epoch_num: 40
   log_smooth_window: 20
   print_batch_step: 20
-  pretrained_model: /kaggle/temp/weights/latest
+  # pretrained_model: /kaggle/temp/weights/latest
   # checkpoints: /kaggle/temp/weights/latest
   save_model_dir: /kaggle/working/rec
   save_epoch_step: 2
   eval_batch_step: [0, 3000]
-  character_dict_path: ppocr/utils/dict/new_nom_dict.txt
-  char_num: &char_num 1754
-  max_text_length: &max_text_length 1
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  char_num: &char_num 10852
+  max_text_length: &max_len 1
   use_space_char: false
   image_shape: [3, 48, 48]
   infer_mode: false
@@ -60,7 +60,7 @@ Loss:
 
 PostProcess:  
   name: CTCLabelDecodeTopK
-  character_dict_path: ppocr/utils/dict/new_nom_dict.txt
+  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
   use_space_char: false
   k: 5
 
@@ -76,7 +76,7 @@ Train:
     ext_op_transform_idx: 1
     label_file_list:
       # - ./train_labels/converted_casia_hwdb_train.txt
-      - ./train_labels/nom_train_data_unicode.txt
+      # - ./train_labels/nom_train_data_unicode.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -106,8 +106,8 @@ Eval:
     name: SimpleDataSet
     data_dir: /kaggle/temp/extracted_data
     label_file_list:
-      # - ./train_labels/converted_casia_hwdb_test.txt
-      - ./train_labels/nom_test_data_unicode.txt
+      - ./train_labels/converted_casia_hwdb_test.txt
+      # - ./train_labels/nom_test_data_unicode.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
