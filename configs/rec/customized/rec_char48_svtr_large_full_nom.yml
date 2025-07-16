@@ -28,7 +28,7 @@ Optimizer:
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.0003  # Reduced for stability with larger model
+    learning_rate: 0.00045  # Reduced for stability with larger model
     warmup_epoch: 8
 
 Architecture:
@@ -97,7 +97,7 @@ Train:
         - length
   loader:
     shuffle: true
-    batch_size_per_card: 128  # Significantly reduced due to SVTR Large memory requirements
+    batch_size_per_card: 192  # Significantly reduced due to SVTR Large memory requirements
     drop_last: true
     num_workers: 2
 
@@ -124,5 +124,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 128    
+    batch_size_per_card: 192    
     num_workers: 2 
