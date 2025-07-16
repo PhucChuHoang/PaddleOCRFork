@@ -38,20 +38,20 @@ Architecture:
   Backbone:
     name: SVTRNet
     img_size: [48, 48]
-    out_char_num: 12  # W//4 = 48//4 = 12
-    out_channels: 384  # Official SVTR Large specification (not 512)
+    out_char_num: 12  # W//4 = 48//4 = 12 (this will be used by avg_pool when last_stage=True)
+    out_channels: 384  # Official SVTR Large specification from research paper
     patch_merging: Conv
     embed_dim: [192, 256, 512]  # Official SVTR Large embed dimensions
-    depth: [3, 9, 9]  # Official SVTR Large depth (not [6,6,9])
+    depth: [3, 9, 9]  # Official SVTR Large depth
     num_heads: [6, 8, 16]  # Official SVTR Large attention heads
     mixer: ['Local','Local','Local','Local','Local','Local','Local','Local','Local','Local','Global','Global','Global','Global','Global','Global','Global','Global','Global','Global','Global']  # Official: 10 Local + 11 Global = 21 layers
     local_mixer: [[5, 5], [5, 5], [5, 5]]  # SVTR Large local mixer
-    last_stage: False  # SVTR Large typically uses False
+    last_stage: True  # Required for out_channels=384 as per research paper
     prenorm: True  # SVTR Large uses prenorm
     sub_num: 2
   Head:
     name: CTCHeadTLast
-    in_channels: 384  # Match the corrected backbone out_channels
+    in_channels: 384  # Match backbone out_channels when last_stage=True
     fc_decay: 1.0e-5
     out_channels: *char_num
 

@@ -39,7 +39,7 @@ Architecture:
   Backbone:
     name: SVTRNet
     img_size: [48, 48]
-    out_char_num: 12  # W//4 = 48//4 = 12
+    out_char_num: 12  # W//4 = 48//4 = 12 (used by avg_pool when last_stage=True)
     out_channels: 320  # Kaggle-optimized (between Base 256 and Large 384)
     patch_merging: Conv
     embed_dim: [160, 256, 384]  # Kaggle-optimized dimensions
@@ -47,13 +47,13 @@ Architecture:
     num_heads: [5, 8, 12]  # Balanced attention heads
     mixer: ['Local','Local','Local','Local','Local','Local','Local','Local','Global','Global','Global','Global','Global','Global','Global','Global','Global']  # 8 Local + 9 Global = 17 layers (memory optimized)
     local_mixer: [[5, 5], [5, 5], [5, 5]]  # SVTR standard
-    last_stage: False  # SVTR Large setting
+    last_stage: True  # Required for proper out_channels control
     prenorm: True  # Better training stability
     sub_num: 2
     drop_path_rate: 0.15  # Added regularization
   Head:
     name: CTCHeadTLast
-    in_channels: 320  # Match the backbone out_channels
+    in_channels: 320  # Match the backbone out_channels when last_stage=True
     fc_decay: 1.0e-5
     out_channels: *char_num
 
