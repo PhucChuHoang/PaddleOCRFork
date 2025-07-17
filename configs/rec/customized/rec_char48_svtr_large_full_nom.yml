@@ -10,8 +10,8 @@ Global:
   save_model_dir: /kaggle/working/rec
   save_epoch_step: 1
   eval_batch_step: [0, 5000]
-  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
-  char_num: &char_num 10852
+  character_dict_path: ppocr/utils/dict/new_nom_dict.txt
+  char_num: &char_num 2059
   max_text_length: &max_len 1
   use_space_char: false
   image_shape: [3, 48, 48]
@@ -29,7 +29,7 @@ Optimizer:
   lr:
     name: Cosine
     learning_rate: 0.0006  # Reduced for stability with larger model
-    warmup_epoch: 8
+    warmup_epoch: 5
 
 Architecture:
   model_type: rec
@@ -60,7 +60,7 @@ Loss:
 
 PostProcess:  
   name: CTCLabelDecodeTopK
-  character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
+  character_dict_path: ppocr/utils/dict/new_nom_dict.txt
   use_space_char: false
   k: 5
 
