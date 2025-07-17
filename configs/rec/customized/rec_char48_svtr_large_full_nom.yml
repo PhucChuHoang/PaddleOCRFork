@@ -8,7 +8,7 @@ Global:
   # pretrained_model: /kaggle/temp/weights/latest
   checkpoints: /kaggle/temp/weights/latest
   save_model_dir: /kaggle/working/rec
-  save_epoch_step: 2
+  save_epoch_step: 1
   eval_batch_step: [0, 5000]
   character_dict_path: ppocr/utils/dict/casia_hwdb_dict.txt
   char_num: &char_num 10852
@@ -99,7 +99,7 @@ Train:
     shuffle: true
     batch_size_per_card: 256  # Significantly reduced due to SVTR Large memory requirements
     drop_last: true
-    num_workers: 2
+    num_workers: 8
 
 Eval:
   dataset:
@@ -125,4 +125,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 256    
-    num_workers: 2 
+    num_workers: 2
