@@ -28,8 +28,8 @@ Optimizer:
   one_dim_param_no_weight_decay: true
   lr:
     name: Cosine
-    learning_rate: 0.0005
-    warmup_epoch: 8
+    learning_rate: 0.0008
+    warmup_epoch: 5
 
 Architecture:
   model_type: rec
