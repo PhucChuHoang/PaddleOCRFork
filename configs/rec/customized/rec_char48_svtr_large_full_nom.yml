@@ -8,7 +8,7 @@ Global:
   pretrained_model: /kaggle/temp/weights/latest
   # checkpoints: /kaggle/temp/weights/latest
   save_model_dir: /kaggle/working/rec
-  save_epoch_step: 1
+  save_epoch_step: 2
   eval_batch_step: [0, 5000]
   character_dict_path: ppocr/utils/dict/new_nom_dict.txt
   char_num: &char_num 2059

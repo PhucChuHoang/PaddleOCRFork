@@ -11,7 +11,7 @@ Global:
   save_epoch_step:      2
   eval_batch_step:      [0, 3000]
   character_dict_path:   ppocr/utils/dict/new_nom_dict.txt
-  char_num:           &char_num  1754
+  char_num:           &char_num 2059
   max_text_length:    &max_len   1
   use_space_char:       false
   image_shape:          [3, 48, 48]
@@ -70,7 +70,7 @@ Train:
       # - ./train_labels/nom_train_data_1.txt
       # - ./train_labels/nom_train_data_2.txt
       # - ./train_labels/nom_train_data_3.txt
-      - ./train_labels/nom_train_data_unicode.txt
+      - ./train_labels/new_nom_train_data_paddleocr.txt
     ext_op_transform_idx: 1
     transforms:
       - DecodeImage:
@@ -101,7 +101,7 @@ Eval:
       # - ./train_labels/test.txt
       # - ./train_labels/test_han_test_data_converted.txt
       # - ./train_labels/final_nom_test_data_converted.txt
-      - ./train_labels/nom_test_data_unicode.txt
+      - ./train_labels/new_nom_test_data_paddleocr.txt
     transforms:
       - DecodeImage:
           img_mode: BGR
