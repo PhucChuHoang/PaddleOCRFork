@@ -121,7 +121,6 @@ class OCRAccuracyEvaluator:
                 is_vertical=True,
                 visualize=False,
                 debug=debug,
-                use_anchors=True
             )
             
             # Calculate metrics for this file

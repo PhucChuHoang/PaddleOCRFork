@@ -27,6 +27,7 @@ def initialize_ocr():
         rec_image_shape='3,48,48',
         rec_algorithm='SVTR',
         det_algorithm='DB',
+        max_text_length=1,
         use_angle_cls=False,
         use_space_char=True,
         use_gpu=True,
