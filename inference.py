@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ocr = PaddleOCR(
     det_model_dir='inference/det/PP-OCRv5_server_det_infer',
-    rec_model_dir='inference/customized/svtr_large/27062025/nom',
+    rec_model_dir='inference/customized/large/nom',
     rec_char_dict_path='ppocr/utils/dict/new_nom_dict.txt',
     rec_image_shape='3,48,48',
     rec_algorithm='SVTR',
