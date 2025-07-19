@@ -825,23 +825,27 @@ def process_batch_alignment(images_folder, texts_folder, output_folder='batch_re
             batch_results['processed_files'] += 1
             batch_results['total_training_samples'] += len(training_data)
             
-            # Calculate file-level statistics
-            matched_count = sum(1 for result in aligned_results if result['status'] == 'MATCHED')
-            low_sim_count = sum(1 for result in aligned_results if result['status'] == 'LOW_SIMILARITY')
+            # Calculate file-level statistics using helper function
+            metrics = calculate_amr_metrics(aligned_results)
             
             file_result = {
                 'base_name': base_name,
                 'ocr_lines': len(clustered_result),
                 'reference_lines': len(reference_texts),
                 'training_samples': len(training_data),
-                'matched_lines': matched_count,
-                'low_similarity_lines': low_sim_count,
-                'match_rate': matched_count / len(aligned_results) * 100 if aligned_results else 0
+                'matched_lines': metrics['matched_count'],
+                'low_similarity_lines': sum(1 for result in aligned_results if result['status'] == 'LOW_SIMILARITY'),
+                'match_rate': metrics['success_rate'],
+                'anchor_count': metrics['anchor_count'],
+                'total_reference_words': metrics['total_reference_words'],
+                'amr': metrics['amr'],
+                'wer': metrics['wer']
             }
             
             batch_results['file_results'].append(file_result)
             
-            print(f"✅ {base_name}: {len(training_data)} training samples, {matched_count} good matches")
+            print(f"✅ {base_name}: {len(training_data)} training samples, {metrics['matched_count']} good matches")
+            print(f"   AMR: {metrics['amr']:.2f}%, WER: {metrics['wer']:.2f}%, Anchors: {metrics['anchor_count']}/{metrics['total_reference_words']}")
             
         except Exception as e:
             print(f"❌ Error processing {base_name}: {e}")
@@ -878,6 +882,22 @@ def save_batch_summary(batch_results, output_folder):
             f.write(f"Success rate: {batch_results['processed_files']/batch_results['total_files']*100:.1f}%\n")
             f.write(f"Total training samples generated: {batch_results['total_training_samples']}\n\n")
             
+            # Calculate overall AMR statistics
+            if batch_results['file_results']:
+                total_anchors = sum(result['anchor_count'] for result in batch_results['file_results'])
+                total_matched = sum(result['matched_lines'] for result in batch_results['file_results'])
+                total_reference_words = sum(result['total_reference_words'] for result in batch_results['file_results'])
+                overall_amr = (total_matched / total_reference_words * 100) if total_reference_words > 0 else 0
+                overall_wer = 100 - overall_amr
+                
+                f.write(f"OVERALL ALIGNMENT METRICS:\n")
+                f.write(f"  Total anchor points: {total_anchors}\n")
+                f.write(f"  Total correctly recognized words: {total_matched}\n")
+                f.write(f"  Total reference words: {total_reference_words}\n")
+                f.write(f"  Overall Alignment Match Rate (AMR) - Word Accuracy: {overall_amr:.2f}%\n")
+                f.write(f"  Overall Word Error Rate (WER): {overall_wer:.2f}%\n")
+                f.write(f"  AMR + WER = {overall_amr + overall_wer:.2f}% (should equal 100%)\n\n")
+            
             # Per-file results
             f.write("PER-FILE RESULTS:\n")
             f.write("-" * 30 + "\n")
@@ -890,6 +910,12 @@ def save_batch_summary(batch_results, output_folder):
                 f.write(f"  Good matches: {result['matched_lines']}\n")
                 f.write(f"  Low similarity: {result['low_similarity_lines']}\n")
                 f.write(f"  Match rate: {result['match_rate']:.1f}%\n")
+                f.write(f"  Anchor points: {result['anchor_count']}\n")
+                f.write(f"  Total reference words: {result['total_reference_words']}\n")
+                f.write(f"  Alignment Match Rate (AMR) - Word Accuracy: {result['amr']:.2f}%\n")
+                f.write(f"  Word Error Rate (WER): {result['wer']:.2f}%\n")
+                f.write(f"  AMR + WER = {result['amr'] + result['wer']:.2f}% (should equal 100%)\n")
+                f.write(f"  Correctly recognized: {result['matched_lines']}/{result['total_reference_words']} words\n")
         
         print(f"\nBatch summary saved to {summary_path}")
         
@@ -1306,6 +1332,49 @@ def visualize_word_level_alignment(image, aligned_results, output_path='word_lev
     pil_image.save(output_path)
     print(f"Word-level alignment visualization saved to {output_path}")
 
+def calculate_amr_metrics(aligned_results):
+    """
+    Calculate Alignment Match Rate (AMR) and related metrics from aligned results.
+    
+    AMR represents word accuracy - the percentage of reference words that were 
+    correctly recognized by the OCR model (including both exact matches and 
+    high-similarity matches).
+    
+    Parameters:
+        aligned_results: List of word-level alignment results
+        
+    Returns:
+        dict: Dictionary containing AMR metrics
+    """
+    anchor_count = sum(1 for result in aligned_results if result.get('alignment_type') == 'ANCHOR')
+    matched_count = sum(1 for result in aligned_results if result['status'] == 'MATCHED')
+    total_reference_words = sum(1 for result in aligned_results if result.get('reference_word', ''))
+    total_ocr_words = sum(1 for result in aligned_results if result.get('ocr_word', ''))
+    
+    # Calculate AMR (Alignment Match Rate) - this is like word accuracy
+    # AMR = (correctly recognized words / total reference words) * 100%
+    # Correctly recognized words include both anchors (exact matches) and high-similarity matches
+    correctly_recognized = matched_count
+    amr = (correctly_recognized / total_reference_words * 100) if total_reference_words > 0 else 0
+    
+    # Calculate WER (Word Error Rate) as complementary to AMR
+    wer = 100 - amr
+    
+    # Calculate additional metrics
+    success_rate = (matched_count / len(aligned_results) * 100) if aligned_results else 0
+    
+    return {
+        'anchor_count': anchor_count,
+        'matched_count': matched_count,
+        'correctly_recognized': correctly_recognized,
+        'total_reference_words': total_reference_words,
+        'total_ocr_words': total_ocr_words,
+        'amr': amr,
+        'wer': wer,
+        'success_rate': success_rate,
+        'total_operations': len(aligned_results)
+    }
+
 def save_word_level_alignment_results(aligned_results, output_file='word_level_alignment_results.txt'):
     """
     Save word-level alignment results to a text file.
@@ -1319,14 +1388,20 @@ def save_word_level_alignment_results(aligned_results, output_file='word_level_a
             f.write("VIETNAMESE WORD-LEVEL ALIGNMENT RESULTS\n")
             f.write("=" * 60 + "\n\n")
             
-            anchor_count = sum(1 for result in aligned_results if result.get('alignment_type') == 'ANCHOR')
-            matched_count = sum(1 for result in aligned_results if result['status'] == 'MATCHED')
+            # Calculate AMR metrics
+            metrics = calculate_amr_metrics(aligned_results)
             
-            f.write(f"SUMMARY:\n")
-            f.write(f"  Total words: {len(aligned_results)}\n")
-            f.write(f"  Anchor points: {anchor_count}\n")
-            f.write(f"  High similarity matches: {matched_count}\n")
-            f.write(f"  Success rate: {matched_count/len(aligned_results)*100:.1f}%\n\n")
+            f.write(f"ALIGNMENT METRICS:\n")
+            f.write(f"  Total words: {metrics['total_operations']}\n")
+            f.write(f"  Total reference words: {metrics['total_reference_words']}\n")
+            f.write(f"  Total OCR words: {metrics['total_ocr_words']}\n")
+            f.write(f"  Anchor points (exact matches): {metrics['anchor_count']}\n")
+            f.write(f"  High similarity matches: {metrics['matched_count']}\n")
+            f.write(f"  Success rate: {metrics['success_rate']:.1f}%\n")
+            f.write(f"  Alignment Match Rate (AMR) - Word Accuracy: {metrics['amr']:.2f}%\n")
+            f.write(f"  Word Error Rate (WER): {metrics['wer']:.2f}%\n")
+            f.write(f"  AMR + WER = {metrics['amr'] + metrics['wer']:.2f}% (should equal 100%)\n")
+            f.write(f"  Correctly recognized: {metrics['correctly_recognized']}/{metrics['total_reference_words']} words\n\n")
             
             f.write("WORD-BY-WORD ALIGNMENT:\n")
             f.write("-" * 50 + "\n\n")
@@ -1424,6 +1499,20 @@ def main():
         print(f"Failed: {batch_results['failed_files']}")
         print(f"Success rate: {batch_results['processed_files']/batch_results['total_files']*100:.1f}%")
         print(f"Total training samples: {batch_results['total_training_samples']}")
+        
+        # Calculate and display overall AMR
+        if batch_results['file_results']:
+            total_anchors = sum(result['anchor_count'] for result in batch_results['file_results'])
+            total_matched = sum(result['matched_lines'] for result in batch_results['file_results'])
+            total_reference_words = sum(result['total_reference_words'] for result in batch_results['file_results'])
+            overall_amr = (total_matched / total_reference_words * 100) if total_reference_words > 0 else 0
+            overall_wer = 100 - overall_amr
+            
+            print(f"\nOVERALL ALIGNMENT METRICS:")
+            print(f"Total anchor points: {total_anchors}")
+            print(f"Total correctly recognized words: {total_matched}")
+            print(f"Overall Alignment Match Rate (AMR): {overall_amr:.2f}%")
+            print(f"Overall Word Error Rate (WER): {overall_wer:.2f}%")
         
         print(f"\nResults saved in: {output_folder}")
         print(f"Check batch_summary.txt for detailed results.")
