@@ -319,7 +319,7 @@ def process_image(image_path, output_path=None, max_workers=4):
                     viet_text = f"[Error: {text}]"
                 
                 # Maintain original PaddleOCR format: [box, (text, confidence)]
-                converted_item = [box, (viet_text, confidence)]
+                converted_item = [box, (text, confidence)]
                 converted_result.append(converted_item)
             
             num_regions = len(converted_result)
