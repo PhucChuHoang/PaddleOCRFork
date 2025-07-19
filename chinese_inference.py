@@ -9,10 +9,18 @@ from contextlib import contextmanager
 import threading
 import time
 
+DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
+REC_MODEL_DIR = 'inference/customized/large/chinese'
+REC_CHAR_DICT_PATH = 'ppocr/utils/dict/casia_hwdb_dict.txt'
+REC_IMAGE_SHAPE = '3,48,48'
+REC_ALGORITHM = 'SVTR'
+CONVERT_DICT_PATH = 'chinese_dict.txt'
+
+
 def getDetectionOcr():
     """Create a PaddleOCR instance for detection only."""
     return PaddleOCR(
-        det_model_dir='inference/det/PP-OCRv5_server_det_infer',
+        det_model_dir=DET_MODEL_DIR,
         use_angle_cls=False,
         use_gpu=False,
         show_log=False,
@@ -24,10 +32,10 @@ def getDetectionOcr():
 def getRecognitionOcr():
     """Create a PaddleOCR instance for recognition only."""
     return PaddleOCR(
-        rec_model_dir='inference/customized/large/chinese',
-        rec_char_dict_path='ppocr/utils/dict/casia_hwdb_dict.txt',
-        rec_image_shape='3,48,48',
-        rec_algorithm='SVTR',
+        rec_model_dir=REC_MODEL_DIR,
+        rec_char_dict_path=REC_CHAR_DICT_PATH,
+        rec_image_shape=REC_IMAGE_SHAPE,
+        rec_algorithm=REC_ALGORITHM,
         use_angle_cls=False,
         use_space_char=True,
         use_gpu=False,
@@ -46,7 +54,6 @@ class FastOcrProcessor:
         self.detector = getDetectionOcr()
         self.rec_pool = [getRecognitionOcr() for _ in range(rec_pool_size)]
         self.rec_lock = threading.Lock()
-        print(f"Initialized Fast OCR processor with {rec_pool_size} recognition instances")
     
     @contextmanager
     def acquire_recognizer(self):
@@ -127,12 +134,9 @@ class FastOcrProcessor:
     def fast_ocr(self, img, max_workers=4):
         """Perform fast OCR on an image by parallelizing text region recognition."""
         try:
-            # Step 1: Detect text regions (single-threaded)
-            print("Detecting text regions...")
             detection_start = time.time()
             det_result = self.detector.ocr(img, det=True, cls=False, rec=False)
             detection_time = time.time() - detection_start
-            print(f"Detection took: {detection_time:.2f}s")
             
             if not det_result or not det_result[0]:
                 print("No text regions detected")
@@ -140,11 +144,6 @@ class FastOcrProcessor:
             
             # Extract detected boxes from detection result
             detected_boxes = det_result[0]
-            print(f"Found {len(detected_boxes)} text regions")
-            
-            # Step 2: Recognize all text regions in parallel
-            print("Recognizing text regions in parallel...")
-            recognition_start = time.time()
             
             results = []
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -156,19 +155,15 @@ class FastOcrProcessor:
                 
                 # Collect results with progress bar
                 recognition_results = []
-                for future in tqdm(futures, desc="Recognizing text regions"):
+                for future in futures:
                     recognition_results.append(future.result())
-            
-            recognition_time = time.time() - recognition_start
-            print(f"Parallel recognition took: {recognition_time:.2f}s")
             
             # Step 3: Combine detection and recognition results
             combined_results = []
             for i, (box, (text, confidence)) in enumerate(zip(detected_boxes, recognition_results)):
                 if text:  # Only include if text was recognized
-                    combined_results.append([box, [text, confidence]])
+                    combined_results.append([box, (text, confidence)])
             
-            print(f"Successfully recognized {len(combined_results)} text regions")
             return combined_results
             
         except Exception as e:
@@ -182,17 +177,21 @@ def char2code(ch):
     pos = ord(ch) - 0xF0000
     return pos
 
-def load_chinese_font(font_size=20):
-    font = ImageFont.truetype("chinese_font.ttf", font_size)
-    return font
+def load_vietnamese_font(font_size=20):
+    try:
+        font = ImageFont.truetype("arial", font_size)
+        return font
+    except Exception:
+        print("Arial font not found, using default font")
+        return ImageFont.load_default()
 
 def visualize_results(image, result, output_path='visualized_output.jpg'):
     # Load the Vietnamese dictionary
     try:
-        with open('chinese_dict.txt', 'r', encoding='utf-8') as f:
+        with open(CONVERT_DICT_PATH, 'r', encoding='utf-8') as f:
             nom_dict = f.read().splitlines()
     except FileNotFoundError:
-        print("Error: chinese_dict.txt not found!")
+        print(f"Error: {CONVERT_DICT_PATH} not found!")
         return
     
     # Convert OpenCV image to PIL Image (RGB)
@@ -201,7 +200,7 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
     draw = ImageDraw.Draw(pil_image)
     
     # Load Vietnamese-compatible font
-    font = load_chinese_font(font_size=20)
+    font = load_vietnamese_font(font_size=20)
     
     # Draw detection boxes and recognition results
     for idx, line in enumerate(result):
@@ -213,24 +212,24 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
         points = [(point[0], point[1]) for point in box]
         draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
         
-        # Get text and confidence
+        # Get text and confidence (tuple format)
         text, confidence = line[1]
-                
-        # Get the corresponding text
+        
+        # Get the corresponding Vietnamese text
         try:
             char_index = char2code(text)
             if 0 <= char_index < len(nom_dict):
-                text = nom_dict[char_index]
+                viet_text = nom_dict[char_index]
             else:
-                text = f"[Unknown char: {text}]"
+                viet_text = f"[Unknown char: {text}]"
                 print(f"Warning: Character index {char_index} out of range for dictionary")
         except Exception as e:
-            text = f"[Error: {text}]"
+            viet_text = f"[Error: {text}]"
             print(f"Error processing character {text}: {e}")
         
         # Display text above the box
         text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
-        label = f"{text} ({confidence:.2f})"
+        label = f"{viet_text} ({confidence:.2f})"
         
         # Get text dimensions for background
         try:
@@ -287,14 +286,9 @@ def process_image(image_path, output_path=None, max_workers=4):
             raise ValueError(f"Could not load image from {image_path}")
         
         image_name = os.path.basename(image_path)
-        print(f"Processing {image_name} with fast parallel OCR...")
         
         # Use fast OCR processor
-        total_start = time.time()
-        result = fast_ocr_processor.fast_ocr(img, max_workers=max_workers)
-        total_time = time.time() - total_start
-        
-        print(f"Total processing time: {total_time:.2f}s")
+        result = fast_ocr_processor.fast_ocr(img, max_workers=max_workers)        
         
         # Generate output path if not provided
         if output_path is None:
@@ -302,34 +296,53 @@ def process_image(image_path, output_path=None, max_workers=4):
             output_filename = f"visualized_{os.path.splitext(image_name)[0]}.png"
             output_path = os.path.join(output_dir, output_filename)
         
-        # Create visualization
-        if result:
-            visualize_results(img, result, output_path=output_path)
-            num_regions = len(result)
-        else:
-            num_regions = 0
-            print(f"No text found in {image_name}")
+        # Load the Vietnamese dictionary for label conversion
+        try:
+            with open(CONVERT_DICT_PATH, 'r', encoding='utf-8') as f:
+                nom_dict = f.read().splitlines()
+        except FileNotFoundError:
+            print(f"Warning: {CONVERT_DICT_PATH} not found! Returning raw results.")
+            nom_dict = None
         
-        return {
-            'image_name': image_name,
-            'ocr_result': result,
-            'num_text_regions': num_regions,
-            'output_path': output_path,
-            'processing_time': total_time,
-            'success': True
-        }
+        # Convert characters to Vietnamese labels while maintaining PaddleOCR format
+        if result and nom_dict:
+            converted_result = []
+            for item in result:
+                box, (text, confidence) = item
+                
+                # Convert character to Vietnamese text
+                try:
+                    char_index = char2code(text)
+                    if 0 <= char_index < len(nom_dict):
+                        viet_text = nom_dict[char_index]
+                    else:
+                        viet_text = f"[Unknown char: {text}]"
+                except Exception as e:
+                    viet_text = f"[Error: {text}]"
+                
+                # Maintain original PaddleOCR format: [box, (text, confidence)]
+                converted_item = [box, (viet_text, confidence)]
+                converted_result.append(converted_item)
+            
+            num_regions = len(converted_result)
+            print(f"Successfully processed {num_regions} text regions with Vietnamese labels")
+            # Wrap in additional list level to match PaddleOCR format: [[[results]]]
+            return [converted_result]
+        elif result:
+            # Return raw result if dictionary not available
+            num_regions = len(result)
+            print(f"Successfully processed {num_regions} text regions (no label conversion)")
+            # Wrap in additional list level to match PaddleOCR format: [[[results]]]
+            return [result]
+        else:
+            print(f"No text found in {image_name}")
+            # Return empty result in PaddleOCR format
+            return [[]]
         
     except Exception as e:
         print(f"Error processing image {image_path}: {str(e)}")
-        return {
-            'image_name': image_path,
-            'ocr_result': None,
-            'num_text_regions': 0,
-            'output_path': None,
-            'processing_time': 0,
-            'success': False,
-            'error': str(e)
-        }
+        return None
+        
 
 def process_batch_images(image_paths, max_workers=4, rec_workers=4):
     """Process multiple images using parallel processing.
@@ -343,9 +356,7 @@ def process_batch_images(image_paths, max_workers=4, rec_workers=4):
         list: List of processing results for each image
     """
     results = []
-    
-    print(f"Processing {len(image_paths)} images with {max_workers} workers...")
-    
+        
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         futures = [
@@ -354,33 +365,23 @@ def process_batch_images(image_paths, max_workers=4, rec_workers=4):
         ]
         
         # Collect results with progress bar
-        for future in tqdm(futures, desc="Processing images"):
+        for future in futures:
             results.append(future.result())
     
     # Print summary
-    successful = sum(1 for r in results if r['success'])
+    successful = sum(1 for r in results if r is not None)
     failed = len(results) - successful
-    total_regions = sum(r['num_text_regions'] for r in results if r['success'])
-    total_time = sum(r['processing_time'] for r in results if r['success'])
+    total_regions = sum(len(r[0]) for r in results if r is not None and len(r) > 0)
     
     print(f"\nBatch processing complete!")
     print(f"Successful: {successful}, Failed: {failed}")
     print(f"Total text regions found: {total_regions}")
-    print(f"Total processing time: {total_time:.2f}s")
-    print(f"Average time per image: {total_time/successful:.2f}s")
+    if successful > 0:
+        print(f"Average regions per image: {total_regions/successful:.1f}")
     
     return results
 
-# Example usage
 if __name__ == "__main__":
-    image_path = 'test_images/12y.jpg'
-    
-    print("=== FAST PARALLEL OCR PROCESSING ===")
-    # Process single image with fast parallel OCR
-    result = process_image(
-        image_path, 
-        output_path='output/fast_visualized_chinese.png',
-        max_workers=4
-    )
-    
-    print(f"Processing result: {result}")
+    image_path = 'test_images/page_12.png'
+    result = process_image(image_path, max_workers=4)
+    print(result)
