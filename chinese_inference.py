@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import threading
 import time
+from sklearn.cluster import DBSCAN
+from sortedcontainers import SortedDict
 
 DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
 REC_MODEL_DIR = 'inference/customized/large/chinese'
