@@ -10,8 +10,8 @@ import time
 from sklearn.cluster import DBSCAN
 from sortedcontainers import SortedDict
 
-DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
-REC_MODEL_DIR = 'inference/customized/large/nom'
+DET_MODEL_DIR = 'det'
+REC_MODEL_DIR = 'rec'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 REC_IMAGE_SHAPE = '3,48,48'
 REC_ALGORITHM = 'SVTR'
@@ -157,6 +157,32 @@ def sort_ocr_results(ocr_result, is_vertical=True):
         box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
         final_result.append([box, (text, confidence)])
     
+    return [final_result]
+
+def sort_ocr_end_results(ocr_result, is_vertical=True):
+    """
+    Sort OCR end results in reading order using clustering.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        is_vertical: True for vertical text layout, False for horizontal
+        
+    Returns:
+        list: Sorted OCR results in reading order, grouped by clusters
+    """
+    if not ocr_result or not ocr_result[0]:
+        return ocr_result
+    
+    final_result = []
+    for line in ocr_result:
+        text = ''.join([item[1][0] for item in line])
+        confidence = np.mean([item[1][1] for item in line])
+        x_min = min([item[0][0][0] for item in line])
+        y_min = min([item[0][0][1] for item in line])
+        x_max = max([item[0][2][0] for item in line])
+        y_max = max([item[0][2][1] for item in line])
+        box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
+        final_result.append([box, (text, confidence)])
     return [final_result]
 
 def getDetectionOcr():
@@ -880,8 +906,10 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/page_90.png'
+    image_path = 'page_192.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
     visualize_results(img, result, 'test.jpg')
-    # print(result)
+    result = sort_ocr_end_results(result, is_vertical=True)
+    print("\nFinal OCR Results:")
+    print(result)
