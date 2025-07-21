@@ -10,8 +10,8 @@ import time
 from sklearn.cluster import DBSCAN
 from sortedcontainers import SortedDict
 
-DET_MODEL_DIR = 'det'
-REC_MODEL_DIR = 'rec'
+DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
+REC_MODEL_DIR = 'inference/customized/large/nom'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 REC_IMAGE_SHAPE = '3,48,48'
 REC_ALGORITHM = 'SVTR'
@@ -175,7 +175,7 @@ def sort_ocr_end_results(ocr_result, is_vertical=True):
     
     final_result = []
     for line in ocr_result:
-        text = ''.join([item[1][0] for item in line])
+        text = ''.join([(item[1][0] + ' ') for item in line])
         confidence = np.mean([item[1][1] for item in line])
         x_min = min([item[0][0][0] for item in line])
         y_min = min([item[0][0][1] for item in line])
@@ -382,122 +382,62 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
         print("No OCR results to visualize")
         return
     
-    # Handle the new grouped structure
-    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
-        # This is the new grouped structure: [[cluster1], [cluster2], ...]
-        for cluster_idx, cluster in enumerate(result):
-            for line in cluster:
-                # Extract box coordinates
-                boxes = line[0]
-                box = np.array(boxes).astype(np.int32).reshape(-1, 2)
-                
-                # Draw polygon around text area (convert points to tuple for PIL)
-                points = [(point[0], point[1]) for point in box]
-                draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
-                
-                # Get text and confidence (tuple format)
-                text, confidence = line[1]
-                
-                # Get the corresponding Vietnamese text
-                try:
-                    char_index = char2code(text)
-                    if 0 <= char_index < len(nom_dict):
-                        viet_text = nom_dict[char_index]
-                    else:
-                        viet_text = f"[Unknown char: {text}]"
-                        print(f"Warning: Character index {char_index} out of range for dictionary")
-                except Exception as e:
-                    viet_text = f"[Error: {text}]"
-                    print(f"Error processing character {text}: {e}")
-                
-                # Display text above the box
-                text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
-                label = f"{viet_text} ({confidence:.2f})"
-                
-                # Get text dimensions for background
-                try:
-                    bbox = draw.textbbox((0, 0), label, font=font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                except:
-                    # Fallback for older PIL versions
-                    text_width, text_height = draw.textsize(label, font=font)
-                
-                # Create semi-transparent background
-                overlay = Image.new('RGBA', pil_image.size, (255, 255, 255, 0))
-                overlay_draw = ImageDraw.Draw(overlay)
-                
-                # Draw semi-transparent background
-                padding = 3
-                overlay_draw.rectangle(
-                    [text_position[0] - padding, text_position[1] - padding, 
-                     text_position[0] + text_width + padding, text_position[1] + text_height + padding],
-                    fill=(255, 255, 255, 200)  # Semi-transparent white
-                )
-                
-                # Composite the overlay onto the main image
-                pil_image = Image.alpha_composite(pil_image.convert('RGBA'), overlay).convert('RGB')
-                draw = ImageDraw.Draw(pil_image)  # Recreate draw object
-                
-                # Draw the text
-                draw.text(text_position, label, fill=(255, 0, 0), font=font)
-    else:
-        # Handle old flat structure for backward compatibility
-        for idx, line in enumerate(result):
-            # Extract box coordinates
-            boxes = line[0]
-            box = np.array(boxes).astype(np.int32).reshape(-1, 2)
-            
-            # Draw polygon around text area (convert points to tuple for PIL)
-            points = [(point[0], point[1]) for point in box]
-            draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
-            
-            # Get text and confidence (tuple format)
-            text, confidence = line[1]
-            
-            # Get the corresponding Vietnamese text
-            try:
-                char_index = char2code(text)
-                if 0 <= char_index < len(nom_dict):
-                    viet_text = nom_dict[char_index]
-                else:
-                    viet_text = f"[Unknown char: {text}]"
-                    print(f"Warning: Character index {char_index} out of range for dictionary")
-            except Exception as e:
-                viet_text = f"[Error: {text}]"
-                print(f"Error processing character {text}: {e}")
-            
-            # Display text above the box
-            text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
-            label = f"{viet_text} ({confidence:.2f})"
-            
-            # Get text dimensions for background
-            try:
-                bbox = draw.textbbox((0, 0), label, font=font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-            except:
-                # Fallback for older PIL versions
-                text_width, text_height = draw.textsize(label, font=font)
-            
-            # Create semi-transparent background
-            overlay = Image.new('RGBA', pil_image.size, (255, 255, 255, 0))
-            overlay_draw = ImageDraw.Draw(overlay)
-            
-            # Draw semi-transparent background
-            padding = 3
-            overlay_draw.rectangle(
-                [text_position[0] - padding, text_position[1] - padding, 
-                 text_position[0] + text_width + padding, text_position[1] + text_height + padding],
-                fill=(255, 255, 255, 200)  # Semi-transparent white
-            )
-            
-            # Composite the overlay onto the main image
-            pil_image = Image.alpha_composite(pil_image.convert('RGBA'), overlay).convert('RGB')
-            draw = ImageDraw.Draw(pil_image)  # Recreate draw object
-            
-            # Draw the text
-            draw.text(text_position, label, fill=(255, 0, 0), font=font)
+     # Draw detection boxes and recognition results
+    for idx, line in enumerate(result):
+        # Extract box coordinates
+        boxes = line[0]
+        box = np.array(boxes).astype(np.int32).reshape(-1, 2)
+        
+        # Draw polygon around text area (convert points to tuple for PIL)
+        points = [(point[0], point[1]) for point in box]
+        draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
+        
+        # Get text and confidence (tuple format)
+        text, confidence = line[1]
+        
+        # Get the corresponding Vietnamese text
+        try:
+            char_index = char2code(text)
+            if 0 <= char_index < len(nom_dict):
+                viet_text = nom_dict[char_index]
+            else:
+                viet_text = f"[Unknown char: {text}]"
+                print(f"Warning: Character index {char_index} out of range for dictionary")
+        except Exception as e:
+            viet_text = f"[Error: {text}]"
+            print(f"Error processing character {text}: {e}")
+        
+        # Display text above the box
+        text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
+        label = f"{viet_text} ({confidence:.2f})"
+        
+        # Get text dimensions for background
+        try:
+            bbox = draw.textbbox((0, 0), label, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except:
+            # Fallback for older PIL versions
+            text_width, text_height = draw.textsize(label, font=font)
+        
+        # Create semi-transparent background
+        overlay = Image.new('RGBA', pil_image.size, (255, 255, 255, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+        
+        # Draw semi-transparent background
+        padding = 3
+        overlay_draw.rectangle(
+            [text_position[0] - padding, text_position[1] - padding, 
+             text_position[0] + text_width + padding, text_position[1] + text_height + padding],
+            fill=(255, 255, 255, 200)  # Semi-transparent white
+        )
+        
+        # Composite the overlay onto the main image
+        pil_image = Image.alpha_composite(pil_image.convert('RGBA'), overlay).convert('RGB')
+        draw = ImageDraw.Draw(pil_image)  # Recreate draw object
+        
+        # Draw the text
+        draw.text(text_position, label, fill=(255, 0, 0), font=font)
     
     # Create output directory if it doesn't exist
     output_dir = os.path.dirname(output_path)
@@ -666,7 +606,7 @@ def process_image_with_sentences(image_path, output_path=None, max_workers=4, is
                     box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
                     
                     # Add to cluster result
-                    cluster_result.append([box, (text, confidence)])
+                    cluster_result.append([box, (viet_text, confidence)])
                 
                 grouped_ocr_results.append(cluster_result)
             
@@ -906,10 +846,7 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'page_192.png'
+    image_path = 'test_images/page_12.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
-    visualize_results(img, result, 'test.jpg')
     result = sort_ocr_end_results(result, is_vertical=True)
-    print("\nFinal OCR Results:")
-    print(result)

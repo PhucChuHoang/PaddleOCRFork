@@ -159,6 +159,32 @@ def sort_ocr_results(ocr_result, is_vertical=True):
     
     return [final_result]
 
+def sort_ocr_end_results(ocr_result, is_vertical=True):
+    """
+    Sort OCR end results in reading order using clustering.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        is_vertical: True for vertical text layout, False for horizontal
+        
+    Returns:
+        list: Sorted OCR results in reading order, grouped by clusters
+    """
+    if not ocr_result or not ocr_result[0]:
+        return ocr_result
+    
+    final_result = []
+    for line in ocr_result:
+        text = ''.join([(item[1][0] + ' ') for item in line])
+        confidence = np.mean([item[1][1] for item in line])
+        x_min = min([item[0][0][0] for item in line])
+        y_min = min([item[0][0][1] for item in line])
+        x_max = max([item[0][2][0] for item in line])
+        y_max = max([item[0][2][1] for item in line])
+        box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
+        final_result.append([box, (text, confidence)])
+    return [final_result]
+
 def getDetectionOcr():
     """Create a PaddleOCR instance for detection only."""
     return PaddleOCR(
@@ -351,7 +377,12 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
     # Load Vietnamese-compatible font
     font = load_vietnamese_font(font_size=20)
     
-    # Draw detection boxes and recognition results
+    # Check if result is the new grouped structure
+    if result is None:
+        print("No OCR results to visualize")
+        return
+    
+     # Draw detection boxes and recognition results
     for idx, line in enumerate(result):
         # Extract box coordinates
         boxes = line[0]
@@ -575,7 +606,7 @@ def process_image_with_sentences(image_path, output_path=None, max_workers=4, is
                     box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
                     
                     # Add to cluster result
-                    cluster_result.append([box, (text, confidence)])
+                    cluster_result.append([box, (viet_text, confidence)])
                 
                 grouped_ocr_results.append(cluster_result)
             
@@ -815,5 +846,7 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/test.png'
+    image_path = 'test_images/page_12.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
+    img = cv2.imread(image_path)
+    result = sort_ocr_end_results(result, is_vertical=True)
