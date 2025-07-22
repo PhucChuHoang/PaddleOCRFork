@@ -15,7 +15,7 @@ REC_MODEL_DIR = 'inference/customized/large/nom'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 REC_IMAGE_SHAPE = '3,48,48'
 REC_ALGORITHM = 'SVTR'
-CONVERT_DICT_PATH = 'combined_unique_chars.txt'
+CONVERT_DICT_PATH = 'ppocr/utils/dict/combined_unique_chars.txt'
 
 def cluster_columns(boxes, eps_w_multiplier=0.6, is_vertical=True):
     """
@@ -846,7 +846,8 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/page_12.png'
+    image_path = 'test_images/image.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
     result = sort_ocr_end_results(result, is_vertical=True)
+    visualize_results(img, result[0], output_path='test_images/nom_visualized.png')

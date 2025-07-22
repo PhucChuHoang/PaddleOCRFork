@@ -11,14 +11,9 @@ from pathlib import Path
 
 # Configuration constants
 DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
-# REC_MODEL_DIR = 'inference/customized/svtr_large/27062025/nom'
-# REC_MODEL_DIR = 'inference/customized/svtr_base'
-# REC_MODEL_DIR = 'inference/customized/large/nom'
-REC_MODEL_DIR = 'inference/customized/svtr_large/nom'
+REC_MODEL_DIR = 'inference/customized/large/nom'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
-# REC_CHAR_DICT_PATH = 'ppocr/utils/dict/casia_hwdb_dict.txt'
-NOM_DICT_PATH = 'combined_unique_chars.txt'
-# NOM_DICT_PATH = 'nom_dict.txt'
+NOM_DICT_PATH = 'ppocr/utils/dict/combined_unique_chars.txt'
 
 def initialize_ocr():
     """Initialize and return PaddleOCR instance with predefined configuration."""

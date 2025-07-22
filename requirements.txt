@@ -15,3 +15,5 @@ albumentations
 # to be compatible with albumentations
 albucore
 packaging
+scikit-learn
+sortedcontainers

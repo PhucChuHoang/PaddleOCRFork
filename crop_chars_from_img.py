@@ -7,7 +7,7 @@ import ast
 from typing import List, Dict
 import unicodedata
 
-DICT_PATH = 'combined_unique_chars.txt'
+DICT_PATH = 'ppocr/utils/dict/combined_unique_chars.txt'
 LABEL_FILE = 'labels.txt'
 UNIQUE_CHARS_FILE = 'unique_chars.txt'
 NEW_WORDS_FILE = 'new_words.txt'

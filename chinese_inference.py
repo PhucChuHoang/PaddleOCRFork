@@ -354,7 +354,7 @@ def char2code(ch):
 
 def load_vietnamese_font(font_size=20):
     try:
-        font = ImageFont.truetype("arial", font_size)
+        font = ImageFont.truetype("font/chinese_font.ttf", font_size)
         return font
     except Exception:
         print("Arial font not found, using default font")
@@ -850,3 +850,4 @@ if __name__ == "__main__":
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
     result = sort_ocr_end_results(result, is_vertical=True)
+    visualize_results(img, result[0], output_path='test_images/chinese_visualized.png')

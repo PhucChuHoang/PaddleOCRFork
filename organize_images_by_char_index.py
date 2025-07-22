@@ -4,7 +4,7 @@ from pathlib import Path
 
 def load_unique_chars():
     """Load the unique characters from unique_chars.txt and create an index mapping"""
-    with open('combined_unique_chars.txt', 'r', encoding='utf-8') as f:
+    with open('ppocr/utils/dict/combined_unique_chars.txt', 'r', encoding='utf-8') as f:
         chars = [line.strip() for line in f.readlines()]
     
     # Create a mapping from character to index
