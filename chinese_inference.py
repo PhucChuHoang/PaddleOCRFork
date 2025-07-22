@@ -15,7 +15,7 @@ REC_MODEL_DIR = 'inference/customized/large/chinese'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/casia_hwdb_dict.txt'
 REC_IMAGE_SHAPE = '3,48,48'
 REC_ALGORITHM = 'SVTR'
-CONVERT_DICT_PATH = 'chinese_dict.txt'
+CONVERT_DICT_PATH = 'ppocr/utils/dict/chinese_dict.txt'
 
 def cluster_columns(boxes, eps_w_multiplier=0.6, is_vertical=True):
     """
