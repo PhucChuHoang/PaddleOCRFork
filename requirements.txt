@@ -17,3 +17,5 @@ albucore
 packaging
 scikit-learn
 sortedcontainers
+python-docx
+beautifulsoup4

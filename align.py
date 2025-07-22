@@ -14,6 +14,9 @@ DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
 REC_MODEL_DIR = 'inference/customized/large/nom'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 NOM_DICT_PATH = 'ppocr/utils/dict/combined_unique_chars.txt'
+IMAGES_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/img'  # Default images folder
+TEXTS_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/txt'  # Default text files folder
+OUTPUT_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/aligned'  # Default output folder
 
 def initialize_ocr():
     """Initialize and return PaddleOCR instance with predefined configuration."""
@@ -27,7 +30,7 @@ def initialize_ocr():
         max_text_length=1,
         use_angle_cls=False,
         use_space_char=True,
-        use_gpu=True,
+        use_gpu=False,
         show_log=False,
         drop_score=0,
     )
@@ -1451,35 +1454,33 @@ def save_word_level_alignment_results(aligned_results, output_file='word_level_a
 def main():
     """Main execution function - runs batch processing automatically."""
     # Default settings for batch processing
-    images_folder = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/img'  # Default images folder
-    texts_folder = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/txt'  # Default text files folder
-    output_folder = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/aligned'  # Default output folder
+    
     threshold = 0  # Default similarity threshold
     is_vertical = True  # Default text orientation (vertical)
     debug = False  # Disable debug mode for automatic processing
     
     print("=== VIETNAMESE OCR BATCH TRAINING DATA GENERATOR ===")
-    print(f"Processing images from: {images_folder}")
-    print(f"Processing text files from: {texts_folder}")
-    print(f"Output folder: {output_folder}")
+    print(f"Processing images from: {IMAGES_FOLDER}")
+    print(f"Processing text files from: {TEXTS_FOLDER}")
+    print(f"Output folder: {OUTPUT_FOLDER}")
     print(f"Similarity threshold: {threshold}")
     print(f"Text orientation: {'Vertical' if is_vertical else 'Horizontal'}")
     
     # Validate folders
-    if not os.path.exists(images_folder):
-        print(f"Error: Images folder '{images_folder}' does not exist!")
+    if not os.path.exists(IMAGES_FOLDER):
+        print(f"Error: Images folder '{IMAGES_FOLDER}' does not exist!")
         print("Please create the folder and add your images, or modify the images_folder variable in main()")
         return
-    if not os.path.exists(texts_folder):
-        print(f"Error: Text files folder '{texts_folder}' does not exist!")
+    if not os.path.exists(TEXTS_FOLDER):
+        print(f"Error: Text files folder '{TEXTS_FOLDER}' does not exist!")
         print("Please create the folder and add your text files, or modify the texts_folder variable in main()")
         return
     
     # Process batch
     batch_results = process_batch_alignment(
-        images_folder=images_folder,
-        texts_folder=texts_folder,
-        output_folder=output_folder,
+        images_folder=IMAGES_FOLDER,
+        texts_folder=TEXTS_FOLDER,
+        output_folder=OUTPUT_FOLDER,
         threshold=threshold,
         is_vertical=is_vertical,
         debug=debug
@@ -1509,7 +1510,7 @@ def main():
             print(f"Overall Alignment Match Rate (AMR): {overall_amr:.2f}%")
             print(f"Overall Word Error Rate (WER): {overall_wer:.2f}%")
         
-        print(f"\nResults saved in: {output_folder}")
+        print(f"\nResults saved in: {OUTPUT_FOLDER}")
         print(f"Check batch_summary.txt for detailed results.")
         print(f"Use combined_training_paddleocr.txt for PaddleOCR training.")
     else:
