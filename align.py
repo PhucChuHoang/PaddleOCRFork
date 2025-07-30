@@ -14,9 +14,16 @@ DET_MODEL_DIR = 'inference/det/PP-OCRv5_server_det_infer'
 REC_MODEL_DIR = 'inference/customized/large/nom'
 REC_CHAR_DICT_PATH = 'ppocr/utils/dict/new_nom_dict.txt'
 NOM_DICT_PATH = 'ppocr/utils/dict/combined_unique_chars.txt'
-IMAGES_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/img'  # Default images folder
-TEXTS_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/txt'  # Default text files folder
-OUTPUT_FOLDER = 'E:/Courses/Thesis/FinalizedData/Kinh_nhung_le_mua_phuc_sinh_3/aligned'  # Default output folder
+IMAGES_FOLDER = 'test_images'  # Default images folder
+TEXTS_FOLDER = 'test_images'  # Default text files folder
+OUTPUT_FOLDER = 'test_images'  # Default output folder
+
+# Filtering parameters
+MIN_BOX_WIDTH = 8   # Minimum box width in pixels
+MIN_BOX_HEIGHT = 8  # Minimum box height in pixels
+MIN_BOX_AREA = 64   # Minimum box area in pixels (8x8)
+MIN_CONFIDENCE = 0.1  # Minimum confidence score for recognition
+MIN_WORDS_PER_SENTENCE = 2  # Minimum words required for a valid sentence
 
 def initialize_ocr():
     """Initialize and return PaddleOCR instance with predefined configuration."""
@@ -33,7 +40,169 @@ def initialize_ocr():
         use_gpu=False,
         show_log=False,
         drop_score=0,
+        # Detection filtering parameters
+        det_db_thresh=0.5,
+        det_db_box_thresh=0.6,  # Increase to reduce overlapping boxes
+        det_db_unclip_ratio=1.6,  # Adjust to control box expansion
+        det_db_score_mode="fast",  # Use fast mode for better performance
+        det_limit_side_len=960,  # Limit input image size
+        det_limit_type="max",  # Limit by max dimension
     )
+
+def filter_boxes_by_size(boxes, min_width=MIN_BOX_WIDTH, min_height=MIN_BOX_HEIGHT, min_area=MIN_BOX_AREA):
+    """
+    Filter out boxes that are too small to be meaningful words.
+    
+    Parameters:
+        boxes: List of boxes in format [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+        min_width: Minimum box width in pixels
+        min_height: Minimum box height in pixels
+        min_area: Minimum box area in pixels
+        
+    Returns:
+        list: Filtered boxes that meet size requirements
+    """
+    filtered_boxes = []
+    
+    for box in boxes:
+        # Convert box to numpy array for easier processing
+        box_array = np.array(box)
+        
+        # Calculate box dimensions
+        x_coords = box_array[:, 0]
+        y_coords = box_array[:, 1]
+        
+        width = np.max(x_coords) - np.min(x_coords)
+        height = np.max(y_coords) - np.min(y_coords)
+        area = width * height
+        
+        # Check if box meets minimum size requirements
+        if width >= min_width and height >= min_height and area >= min_area:
+            filtered_boxes.append(box)
+        else:
+            print(f"Filtered out small box: width={width:.1f}, height={height:.1f}, area={area:.1f}")
+    
+    return filtered_boxes
+
+def filter_ocr_results_by_confidence(ocr_result, min_confidence=MIN_CONFIDENCE):
+    """
+    Filter OCR results by confidence score.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        min_confidence: Minimum confidence score required
+        
+    Returns:
+        list: Filtered OCR results
+    """
+    if not ocr_result or not ocr_result[0]:
+        return ocr_result
+    
+    filtered_results = []
+    
+    for line in ocr_result[0]:
+        box, (text, confidence) = line
+        
+        # Only include results with sufficient confidence
+        if confidence >= min_confidence:
+            filtered_results.append(line)
+        else:
+            print(f"Filtered out low-confidence result: '{text}' (confidence: {confidence:.3f})")
+    
+    return [filtered_results] if filtered_results else [[]]
+
+def filter_empty_text_results(ocr_result):
+    """
+    Filter out OCR results with empty or meaningless text.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        
+    Returns:
+        list: Filtered OCR results
+    """
+    if not ocr_result or not ocr_result[0]:
+        return ocr_result
+    
+    filtered_results = []
+    
+    for line in ocr_result[0]:
+        box, (text, confidence) = line
+        
+        # Filter out empty text, single characters that are likely noise, etc.
+        if text and len(text.strip()) > 0:
+            # Additional filtering for single characters that might be noise
+            if len(text.strip()) > 1 or (len(text.strip()) == 1 and text.strip() not in [' ', '.', ',', ';', ':', '!', '?', '-', '_']):
+                filtered_results.append(line)
+            else:
+                print(f"Filtered out single character noise: '{text}'")
+        else:
+            print(f"Filtered out empty text result")
+    
+    return [filtered_results] if filtered_results else [[]]
+
+def filter_sentences_by_word_count(sentences, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Filter out sentences that have too few words to be meaningful.
+    
+    Parameters:
+        sentences: List of sentence strings
+        min_words: Minimum number of words required for a valid sentence
+        
+    Returns:
+        list: Filtered sentences
+    """
+    filtered_sentences = []
+    
+    for sentence in sentences:
+        word_count = len(sentence.split())
+        if word_count >= min_words:
+            filtered_sentences.append(sentence)
+        else:
+            print(f"Filtered out short sentence: '{sentence}' ({word_count} words)")
+    
+    return filtered_sentences
+
+def apply_comprehensive_filtering(ocr_result, min_confidence=MIN_CONFIDENCE, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Apply comprehensive filtering to OCR results including confidence, text quality, and box size.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        min_confidence: Minimum confidence score required
+        min_words: Minimum words required for valid sentences
+        
+    Returns:
+        list: Comprehensively filtered OCR results
+    """
+    if not ocr_result or not ocr_result[0]:
+        return ocr_result
+    
+    print(f"Applying comprehensive filtering to {len(ocr_result[0])} OCR results...")
+    
+    # Step 1: Filter by confidence
+    confidence_filtered = filter_ocr_results_by_confidence(ocr_result, min_confidence)
+    print(f"After confidence filtering: {len(confidence_filtered[0])} results")
+    
+    # Step 2: Filter empty text results
+    text_filtered = filter_empty_text_results(confidence_filtered)
+    print(f"After text filtering: {len(text_filtered[0])} results")
+    
+    # Step 3: Filter by box size
+    if text_filtered and text_filtered[0]:
+        boxes = [line[0] for line in text_filtered[0]]
+        filtered_boxes = filter_boxes_by_size(boxes)
+        
+        # Reconstruct results with filtered boxes
+        size_filtered_results = []
+        for i, line in enumerate(text_filtered[0]):
+            if i < len(filtered_boxes):
+                size_filtered_results.append(line)
+        
+        print(f"After size filtering: {len(size_filtered_results)} results")
+        return [size_filtered_results] if size_filtered_results else [[]]
+    
+    return text_filtered
 
 def char2code(ch):
     """Convert character to its corresponding code position."""
@@ -215,7 +384,7 @@ def group_text_by_clusters(text_results, labels, is_vertical=True):
     
     return clustered_result
 
-def process_image(img_path, is_vertical=True, visualize=True):
+def process_image(img_path, is_vertical=True, visualize=True, apply_filtering=True):
     """
     Main function to process an image with OCR and clustering.
     
@@ -223,6 +392,7 @@ def process_image(img_path, is_vertical=True, visualize=True):
         img_path: Path to the input image
         is_vertical: True for vertical text layout, False for horizontal
         visualize: Whether to create visualization output
+        apply_filtering: Whether to apply comprehensive filtering to OCR results
     
     Returns:
         tuple: (original_result, clustered_result)
@@ -238,6 +408,12 @@ def process_image(img_path, is_vertical=True, visualize=True):
     # Perform OCR
     print("Performing OCR...")
     result = ocr.ocr(img, det=True, cls=False)
+    
+    # Apply comprehensive filtering if requested
+    if apply_filtering and result and result[0]:
+        print("Applying comprehensive filtering...")
+        result = apply_comprehensive_filtering(result)
+        print(f"After filtering: {len(result[0])} text regions")
     
     # Convert result format
     altered_result = convert_ocr_result_format(result)
@@ -453,7 +629,7 @@ def extract_all_words_with_coordinates(clustered_result, nom_dict):
     
     return all_words_with_coords
 
-def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0.5, is_vertical=True, visualize=True, debug=False):
+def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0.5, is_vertical=True, visualize=True, debug=False, apply_filtering=True):
     """
     Main function with word-level anchor-based alignment.
     
@@ -464,13 +640,14 @@ def process_sequential_sentence_alignment(img_path, reference_texts, threshold=0
         is_vertical: Text layout orientation  
         visualize: Whether to create visualizations
         debug: Whether to show debug information
+        apply_filtering: Whether to apply comprehensive filtering to OCR results
         
     Returns:
         tuple: (original_ocr_results, clustered_results, aligned_results)
     """
     # Perform OCR and clustering first
     print("Processing image with OCR and clustering...")
-    original_result, clustered_result = process_image(img_path, is_vertical, visualize=False)
+    original_result, clustered_result = process_image(img_path, is_vertical, visualize=False, apply_filtering=apply_filtering)
     
     print(f"\nFound {len(clustered_result)} {'columns' if is_vertical else 'rows'} (OCR lines)")
     
@@ -740,7 +917,7 @@ def find_matching_files(images_folder, texts_folder):
     return matching_pairs
 
 def process_batch_alignment(images_folder, texts_folder, output_folder='batch_results', 
-                          threshold=0.4, is_vertical=True, debug=False):
+                          threshold=0.4, is_vertical=True, debug=False, apply_filtering=True):
     """
     Process a batch of images and corresponding text files with automatic alignment.
     
@@ -751,6 +928,7 @@ def process_batch_alignment(images_folder, texts_folder, output_folder='batch_re
         threshold: Similarity threshold for alignment quality
         is_vertical: Text layout orientation
         debug: Whether to show debug information
+        apply_filtering: Whether to apply comprehensive filtering to OCR results
         
     Returns:
         dict: Batch processing results
@@ -800,7 +978,8 @@ def process_batch_alignment(images_folder, texts_folder, output_folder='batch_re
                 threshold=threshold,
                 is_vertical=is_vertical,
                 visualize=False,  # Skip visualization for batch processing
-                debug=debug and i <= 3  # Only debug first 3 files
+                debug=debug and i <= 3,  # Only debug first 3 files
+                apply_filtering=apply_filtering
             )
             
             # Generate training data
@@ -991,6 +1170,154 @@ def word_level_anchor_guided_alignment(ocr_words_with_coords, reference_text, mi
         print(f"Edit distance cost: {total_cost:.3f}")
     
     return aligned_results
+
+def extract_sentences_from_clustered_results(clustered_result, nom_dict, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Extract sentences from clustered OCR results in reading order.
+    
+    Parameters:
+        clustered_result: Dictionary of clustered OCR results
+        nom_dict: Vietnamese dictionary for text conversion
+        min_words: Minimum number of words required for a valid sentence (default: 2)
+        
+    Returns:
+        list: List of sentences in reading order (filtered by minimum word count)
+    """
+    sentences = []
+    
+    # Process clusters in order (columns/rows)
+    sorted_clusters = sorted(clustered_result.keys())
+    
+    for cluster_label in sorted_clusters:
+        cluster_lines = clustered_result[cluster_label]
+        
+        # Extract words from this cluster/column
+        cluster_words = []
+        for line in cluster_lines:
+            coordinates = line[0]
+            text, confidence = line[1]
+            
+            # Convert to Vietnamese text
+            vietnamese_text = get_vietnamese_text(text, nom_dict)
+            cluster_words.append(vietnamese_text)
+        
+        # Join words in this cluster to form a sentence
+        if cluster_words:
+            sentence = ' '.join(cluster_words)
+            # Only include sentences with minimum word count
+            if len(cluster_words) >= min_words:
+                sentences.append(sentence)
+            else:
+                print(f"Filtered out single-word sentence: '{sentence}' (cluster {cluster_label})")
+    
+    return sentences
+
+def extract_sentences_from_ocr_result(ocr_result, nom_dict, is_vertical=True, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Extract sentences from OCR results by clustering and grouping.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        nom_dict: Vietnamese dictionary for text conversion
+        is_vertical: True for vertical text layout, False for horizontal
+        min_words: Minimum number of words required for a valid sentence (default: 2)
+        
+    Returns:
+        list: List of sentences in reading order (filtered by minimum word count)
+    """
+    if not ocr_result or not ocr_result[0]:
+        return []
+    
+    # Convert result format
+    altered_result = convert_ocr_result_format(ocr_result)
+    
+    # Cluster text regions
+    labels = cluster_columns(
+        np.array([line[0] for line in altered_result]), 
+        is_vertical=is_vertical
+    )
+    
+    # Group results by clusters
+    clustered_result = group_text_by_clusters(altered_result, labels, is_vertical)
+    
+    # Extract sentences from clustered results
+    sentences = extract_sentences_from_clustered_results(clustered_result, nom_dict, min_words=min_words)
+    
+    return sentences
+
+def extract_grouped_sentences_from_ocr_result(ocr_result, nom_dict, is_vertical=True, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Extract grouped sentences from OCR results by clustering and grouping.
+    Each group represents a column/row of text.
+    
+    Parameters:
+        ocr_result: PaddleOCR result format
+        nom_dict: Vietnamese dictionary for text conversion
+        is_vertical: True for vertical text layout, False for horizontal
+        min_words: Minimum number of words required for a valid sentence (default: 2)
+        
+    Returns:
+        list: List of sentence groups, where each group is a list of sentences from the same cluster
+    """
+    if not ocr_result or not ocr_result[0]:
+        return []
+    
+    # Convert result format
+    altered_result = convert_ocr_result_format(ocr_result)
+    
+    # Cluster text regions
+    labels = cluster_columns(
+        np.array([line[0] for line in altered_result]), 
+        is_vertical=is_vertical
+    )
+    
+    # Group results by clusters
+    clustered_result = group_text_by_clusters(altered_result, labels, is_vertical)
+    
+    # Extract grouped sentences from clustered results
+    grouped_sentences = extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict, min_words=min_words)
+    
+    return grouped_sentences
+
+def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict, min_words=MIN_WORDS_PER_SENTENCE):
+    """
+    Extract grouped sentences from clustered OCR results in reading order.
+    Each group represents a column/row of text.
+    
+    Parameters:
+        clustered_result: Dictionary of clustered OCR results
+        nom_dict: Vietnamese dictionary for text conversion
+        min_words: Minimum number of words required for a valid sentence (default: 2)
+        
+    Returns:
+        list: List of sentence groups, where each group is a list of sentences from the same cluster
+    """
+    grouped_sentences = []
+    
+    # Process clusters in order (columns/rows)
+    sorted_clusters = sorted(clustered_result.keys())
+    
+    for cluster_label in sorted_clusters:
+        cluster_lines = clustered_result[cluster_label]
+        
+        # Extract words from this cluster/column
+        cluster_words = []
+        for line in cluster_lines:
+            coordinates = line[0]
+            text, confidence = line[1]
+            
+            # Convert to Vietnamese text
+            vietnamese_text = get_vietnamese_text(text, nom_dict)
+            cluster_words.append(vietnamese_text)
+        
+        # Only include sentences with minimum word count
+        if len(cluster_words) >= min_words:
+            # Add the cluster words as a group (list of words)
+            grouped_sentences.append(cluster_words)
+        else:
+            print(f"Filtered out single-word sentence: '{' '.join(cluster_words)}' (cluster {cluster_label})")
+    
+    return grouped_sentences
 
 def dp_word_alignment(ocr_words, reference_words, min_anchor_similarity=0.9, debug=False):
     """
@@ -1483,7 +1810,8 @@ def main():
         output_folder=OUTPUT_FOLDER,
         threshold=threshold,
         is_vertical=is_vertical,
-        debug=debug
+        debug=debug,
+        apply_filtering=True  # Enable comprehensive filtering by default
     )
     
     if batch_results:

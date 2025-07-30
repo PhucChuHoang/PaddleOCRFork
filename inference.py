@@ -159,32 +159,6 @@ def sort_ocr_results(ocr_result, is_vertical=True):
     
     return [final_result]
 
-def sort_ocr_end_results(ocr_result, is_vertical=True):
-    """
-    Sort OCR end results in reading order using clustering.
-    
-    Parameters:
-        ocr_result: PaddleOCR result format
-        is_vertical: True for vertical text layout, False for horizontal
-        
-    Returns:
-        list: Sorted OCR results in reading order, grouped by clusters
-    """
-    if not ocr_result or not ocr_result[0]:
-        return ocr_result
-    
-    final_result = []
-    for line in ocr_result:
-        text = ''.join([(item[1][0] + ' ') for item in line])
-        confidence = np.mean([item[1][1] for item in line])
-        x_min = min([item[0][0][0] for item in line])
-        y_min = min([item[0][0][1] for item in line])
-        x_max = max([item[0][2][0] for item in line])
-        y_max = max([item[0][2][1] for item in line])
-        box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
-        final_result.append([box, (text, confidence)])
-    return [final_result]
-
 def getDetectionOcr():
     """Create a PaddleOCR instance for detection only."""
     return PaddleOCR(
@@ -192,6 +166,12 @@ def getDetectionOcr():
         use_angle_cls=False,
         use_gpu=False,
         show_log=False,
+        det_db_thresh=0.5,
+        det_db_box_thresh=0.6,  # Increase to reduce overlapping boxes
+        det_db_unclip_ratio=1.6,  # Adjust to control box expansion
+        det_db_score_mode="fast",  # Use fast mode for better performance
+        det_limit_side_len=960,  # Limit input image size
+        det_limit_type="max",  # Limit by max dimension
         det=True,
         rec=False,  # Detection only
         cls=False
@@ -382,19 +362,122 @@ def visualize_results(image, result, output_path='visualized_output.jpg'):
         print("No OCR results to visualize")
         return
     
-     # Draw detection boxes and recognition results
-    for idx, line in enumerate(result):
-        # Extract box coordinates
-        boxes = line[0]
-        box = np.array(boxes).astype(np.int32).reshape(-1, 2)
-        
-        # Draw polygon around text area (convert points to tuple for PIL)
-        points = [(point[0], point[1]) for point in box]
-        draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
-        
-        # Get text and confidence (tuple format)
-        text, _ = line[1]
-        print(f"Line {idx}: {text}")
+    # Handle the new grouped structure
+    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+        # This is the new grouped structure: [[cluster1], [cluster2], ...]
+        for cluster_idx, cluster in enumerate(result):
+            for line in cluster:
+                # Extract box coordinates
+                boxes = line[0]
+                box = np.array(boxes).astype(np.int32).reshape(-1, 2)
+                
+                # Draw polygon around text area (convert points to tuple for PIL)
+                points = [(point[0], point[1]) for point in box]
+                draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
+                
+                # Get text and confidence (tuple format)
+                text, confidence = line[1]
+                
+                # Get the corresponding Vietnamese text
+                try:
+                    char_index = char2code(text)
+                    if 0 <= char_index < len(nom_dict):
+                        viet_text = nom_dict[char_index]
+                    else:
+                        viet_text = f"[Unknown char: {text}]"
+                        print(f"Warning: Character index {char_index} out of range for dictionary")
+                except Exception as e:
+                    viet_text = f"[Error: {text}]"
+                    print(f"Error processing character {text}: {e}")
+                
+                # Display text above the box
+                text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
+                label = f"{viet_text} ({confidence:.2f})"
+                
+                # Get text dimensions for background
+                try:
+                    bbox = draw.textbbox((0, 0), label, font=font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                except:
+                    # Fallback for older PIL versions
+                    text_width, text_height = draw.textsize(label, font=font)
+                
+                # Create semi-transparent background
+                overlay = Image.new('RGBA', pil_image.size, (255, 255, 255, 0))
+                overlay_draw = ImageDraw.Draw(overlay)
+                
+                # Draw semi-transparent background
+                padding = 3
+                overlay_draw.rectangle(
+                    [text_position[0] - padding, text_position[1] - padding, 
+                     text_position[0] + text_width + padding, text_position[1] + text_height + padding],
+                    fill=(255, 255, 255, 200)  # Semi-transparent white
+                )
+                
+                # Composite the overlay onto the main image
+                pil_image = Image.alpha_composite(pil_image.convert('RGBA'), overlay).convert('RGB')
+                draw = ImageDraw.Draw(pil_image)  # Recreate draw object
+                
+                # Draw the text
+                draw.text(text_position, label, fill=(255, 0, 0), font=font)
+    else:
+        # Handle old flat structure for backward compatibility
+        for idx, line in enumerate(result):
+            # Extract box coordinates
+            boxes = line[0]
+            box = np.array(boxes).astype(np.int32).reshape(-1, 2)
+            
+            # Draw polygon around text area (convert points to tuple for PIL)
+            points = [(point[0], point[1]) for point in box]
+            draw.line(points + [points[0]], fill=(0, 255, 0), width=2)
+            
+            # Get text and confidence (tuple format)
+            text, confidence = line[1]
+            
+            # Get the corresponding Vietnamese text
+            try:
+                char_index = char2code(text)
+                if 0 <= char_index < len(nom_dict):
+                    viet_text = nom_dict[char_index]
+                else:
+                    viet_text = f"[Unknown char: {text}]"
+                    print(f"Warning: Character index {char_index} out of range for dictionary")
+            except Exception as e:
+                viet_text = f"[Error: {text}]"
+                print(f"Error processing character {text}: {e}")
+            
+            # Display text above the box
+            text_position = (int(box[0][0]), int(box[0][1] - 25))  # Moved up a bit more
+            label = f"{viet_text} ({confidence:.2f})"
+            
+            # Get text dimensions for background
+            try:
+                bbox = draw.textbbox((0, 0), label, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            except:
+                # Fallback for older PIL versions
+                text_width, text_height = draw.textsize(label, font=font)
+            
+            # Create semi-transparent background
+            overlay = Image.new('RGBA', pil_image.size, (255, 255, 255, 0))
+            overlay_draw = ImageDraw.Draw(overlay)
+            
+            # Draw semi-transparent background
+            padding = 3
+            overlay_draw.rectangle(
+                [text_position[0] - padding, text_position[1] - padding, 
+                 text_position[0] + text_width + padding, text_position[1] + text_height + padding],
+                fill=(255, 255, 255, 200)  # Semi-transparent white
+            )
+            
+            # Composite the overlay onto the main image
+            pil_image = Image.alpha_composite(pil_image.convert('RGBA'), overlay).convert('RGB')
+            draw = ImageDraw.Draw(pil_image)  # Recreate draw object
+            
+            # Draw the text
+            draw.text(text_position, label, fill=(255, 0, 0), font=font)
     
     # Create output directory if it doesn't exist
     output_dir = os.path.dirname(output_path)
@@ -563,7 +646,7 @@ def process_image_with_sentences(image_path, output_path=None, max_workers=4, is
                     box = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
                     
                     # Add to cluster result
-                    cluster_result.append([box, (viet_text, confidence)])
+                    cluster_result.append([box, (text, confidence)])
                 
                 grouped_ocr_results.append(cluster_result)
             
@@ -803,8 +886,8 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/page_12.png'
+    image_path = 'test_images/page_2.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
-    result = sort_ocr_end_results(result, is_vertical=True)
-    visualize_results(img, result[0], output_path='test_images/nom_visualized.png')
+    visualize_results(img, result, 'test_images/error_img/image_visualized.png')
+    # print(result)

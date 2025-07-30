@@ -803,7 +803,7 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/chinese_test.jpg'
+    image_path = 'test_images/image.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
     result = sort_ocr_end_results(result, is_vertical=True)

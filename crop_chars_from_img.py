@@ -209,9 +209,9 @@ def find_alignment_files(aligned_data_folder: str):
 
 def main():
     # Configuration
-    images_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/img'  # Original images folder
-    aligned_data_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/aligned'  # Aligned data folder
-    output_folder = 'E:/Courses/Thesis/FinalizedData/Thien_chua_thanh_mau_quyen_thuong/cropped'  # Output folder for cropped images
+    images_folder = 'test_images'  # Original images folder
+    aligned_data_folder = 'test_images'  # Aligned data folder
+    output_folder = 'test_images'  # Output folder for cropped images
     
     # Check if folders exist
     if not os.path.exists(images_folder):
