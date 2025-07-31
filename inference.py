@@ -886,7 +886,7 @@ def extract_grouped_sentences_from_clustered_results(clustered_result, nom_dict,
     return grouped_sentences
 
 if __name__ == "__main__":
-    image_path = 'test_images/page_2.png'
+    image_path = 'test_images/page_12.png'
     result = process_image_with_sentences(image_path, max_workers=4, is_vertical=True)
     img = cv2.imread(image_path)
     visualize_results(img, result, 'test_images/error_img/image_visualized.png')
