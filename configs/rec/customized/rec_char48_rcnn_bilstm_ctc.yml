@@ -16,31 +16,36 @@ Global:
   use_space_char: false
   image_shape: [3, 48, 48]
   infer_mode: false
-  save_res_path: ./output/rec/predicts_pphgnetv2.txt
+  save_res_path: ./output/rec/predicts_rcnn_bilstm_ctc.txt
 
 Optimizer:
-  name: AdamW
+  name: Adam
   beta1: 0.9
-  beta2: 0.99
-  epsilon: 1.0e-08
-  weight_decay: 0.05
-  no_weight_decay_name: norm pos_embed char_node_embed pos_node_embed char_pos_embed vis_pos_embed
-  one_dim_param_no_weight_decay: true
+  beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.0006
+    learning_rate: 0.0005
     warmup_epoch: 5
+  regularizer:
+    name: 'L2'
+    factor: 1e-4
 
 Architecture:
   model_type: rec
-  algorithm: SVTR_HGNet
-  Transform: null    
+  algorithm: CRNN
+  Transform: null    # No TPS needed for single characters
   Backbone:
-    name: PPHGNetV2_B4
-    text_rec: true
+    name: ResNet
+    layers: 34
+    use_se: false
+  Neck:
+    name: SequenceEncoder
+    encoder_type: rnn
+    hidden_size: 256
+    bidirectional: true
+    rnn_type: LSTM
   Head:
-    name: CTCHeadTLast
-    in_channels: 2048
+    name: CTCHead
     fc_decay: 1.0e-5
     out_channels: *char_num
 
@@ -79,7 +84,8 @@ Train:
     - CTCLabelEncode:
     - RecResizeImg:
         image_shape: [3, 48, 48]
-        pad: false
+        infer_mode: false
+        character_dict_path: ppocr/utils/dict/new_nom_dict.txt
     - KeepKeys:
         keep_keys:
         - image
@@ -106,7 +112,8 @@ Eval:
     - CTCLabelEncode:
     - RecResizeImg:
         image_shape: [3, 48, 48]
-        pad: false
+        infer_mode: false
+        character_dict_path: ppocr/utils/dict/new_nom_dict.txt
     - KeepKeys:
         keep_keys:
         - image
