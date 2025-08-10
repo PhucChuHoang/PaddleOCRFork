@@ -77,7 +77,8 @@ Train:
     label_file_list:
       # - ./train_labels/converted_casia_hwdb_train.txt
       # - ./train_labels/nom_train_data_unicode.txt
-      - ./train_labels/new_nom_train_data_paddleocr.txt
+      # - ./train_labels/new_nom_train_data_paddleocr.txt
+      - ./train_labels/nom_train_data_unicode.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
@@ -109,7 +110,8 @@ Eval:
     label_file_list:
       # - ./train_labels/converted_casia_hwdb_test.txt
       # - ./train_labels/nom_test_data_unicode.txt
-      - ./train_labels/new_nom_test_data_paddleocr.txt
+      # - ./train_labels/new_nom_test_data_paddleocr.txt
+      - ./train_labels/nom_test_data_unicode.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
