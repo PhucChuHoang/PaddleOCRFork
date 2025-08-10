@@ -11,7 +11,7 @@ Global:
   save_epoch_step: 2
   eval_batch_step: [0, 3000]
   character_dict_path: ppocr/utils/dict/new_nom_dict.txt
-  char_num: &char_num 2059
+  char_num: &char_num 2817
   max_text_length: &max_text_length 1
   use_space_char: false
   image_shape: [3, 48, 48]
